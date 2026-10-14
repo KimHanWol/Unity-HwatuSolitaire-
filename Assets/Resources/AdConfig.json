@@ -1,0 +1,21 @@
+{
+  "useTestAds": true,
+  "testDeviceIds": [],
+  "interstitialFromStage": 3,
+  "interstitialMinInterval": 60,
+  "quietAfterRewarded": 45,
+  "android": {
+    "appId": "",
+    "banner": "",
+    "interstitial": "",
+    "rewardedHint": "",
+    "rewardedRevive": ""
+  },
+  "ios": {
+    "appId": "",
+    "banner": "",
+    "interstitial": "",
+    "rewardedHint": "",
+    "rewardedRevive": ""
+  }
+}

@@ -4,8 +4,9 @@
 
 | 파일 | 쓰임 | 만든 방법 |
 |---|---|---|
-| snap, snap2, snap3 | 짝을 맞출 때 "짝!" (셋 중 무작위) | 뺨 치는 소리 녹음에서 가장 밝은 한 대씩 잘라 고음을 올림 (`make_sfx.js`) |
-| stack_slap | 쌌다: 짝·짝·짝! | 위 짝 소리 셋만 이어서 (다른 소리 없음) |
+| snap, snap2, snap3 | 짝을 맞출 때 "짝!" (셋 중 무작위) | 뺨 치는 소리에서 가장 밝은 한 대씩 잘라, 아주 짧게 끊고 몸통을 올려 세게 (달라붙는 느낌) |
+| stack_slap | 쌌다 (한 번) | 같은 뺨 소리 한 대를 짝보다 묵직하고 조금 길게 |
+| stamp, stamp2, stamp3 | 클리어 창에서 광이 하나씩 찍힐 때 | Kenney impactWood_heavy (나무 도장 쿵), 찍힐수록 조금씩 높게 |
 | select | 패 고르기 | Kenney card-slide 앞부분 |
 | shuffle | 섞기, 판 깔기 | Kenney card-shuffle |
 

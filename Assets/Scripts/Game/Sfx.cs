@@ -22,6 +22,7 @@ public class Sfx : MonoBehaviour
     AudioClip[] combo;
     AudioClip[] star;
     AudioClip stackSlap;
+    AudioClip[] stamp;
     AudioClip select, deny, stack, bomb, shuffle, clear, fail, hint, click, tick, slide, revive;
     float lastSnap;
 
@@ -42,11 +43,13 @@ public class Sfx : MonoBehaviour
     public static void Slide() => Play(i => i.slide, 0.25f);
     public static void Revive() => Play(i => i.revive, 0.7f);
 
-    /// <summary>별 하나가 찍힐 때 (0, 1, 2번째로 음이 올라간다).</summary>
+    /// <summary>클리어 창에서 광 하나가 도장처럼 찍힐 때 (0, 1, 2번째로 조금씩 높아진다). 녹음(stamp)이 없으면 종소리.</summary>
     public static void Star(int index)
     {
         if (instance == null) return;
-        instance.PlayClip(instance.star[Mathf.Clamp(index, 0, instance.star.Length - 1)], 0.6f);
+        int i = Mathf.Clamp(index, 0, 2);
+        var clip = instance.stamp[i] != null ? instance.stamp[i] : instance.star[i];
+        instance.PlayClip(clip, instance.stamp[i] != null ? 1f : 0.6f);
     }
 
     /// <summary>짝을 맞췄을 때. combo는 연속 몇 번째인지(1부터), 높을수록 종소리가 올라간다.</summary>
@@ -57,7 +60,7 @@ public class Sfx : MonoBehaviour
         if (Time.unscaledTime - instance.lastSnap < 0.03f) return;
         instance.lastSnap = Time.unscaledTime;
         instance.PlayClip(instance.snap[Random.Range(0, instance.snap.Length)], 1f);
-        if (comboCount >= 2) instance.PlayClip(instance.combo[Mathf.Clamp(comboCount - 2, 0, instance.combo.Length - 1)], 0.35f);
+        // 짝은 다른 소리와 겹치지 않게 그 자체로만 (연속 종소리 없음)
     }
 
     /// <summary>폭탄. 여러 장이 연달아 터질 때는 첫 소리만 크게.</summary>
@@ -118,6 +121,7 @@ public class Sfx : MonoBehaviour
         deny = Load("deny", BuildDeny);
         stack = Load("stack", BuildStack);
         stackSlap = Resources.Load<AudioClip>("Audio/stack_slap");
+        stamp = new[] { Resources.Load<AudioClip>("Audio/stamp"), Resources.Load<AudioClip>("Audio/stamp2"), Resources.Load<AudioClip>("Audio/stamp3") };
         bomb = Load("bomb", BuildBomb);
         shuffle = Load("shuffle", BuildShuffle);
         clear = Load("clear", BuildClear);

@@ -984,7 +984,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
                 Anim.Run(star, 0.3f, t => star.rectTransform.localScale = Vector3.one * Mathf.Lerp(2.4f, 1f, Anim.InCubic(t)), () =>
                 {
                     Sfx.Star(index);
-                    Sfx.Snap(1);
                     Fx.Burst(star.rectTransform.position, 14, Fx.FireColors, 700f, Art.Spark, 0.6f, 30f, -1000f);
                 }, 0.25f + i * 0.35f);
             }

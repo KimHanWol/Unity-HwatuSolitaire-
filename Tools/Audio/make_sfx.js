@@ -98,27 +98,40 @@ function write(name, x, quality = 6) {
 }
 
 // ------------------------------------------------------------ 짝 (뺨·박수 한 대)
-/** id 녹음의 at초 근처 한 대만 잘라, 최고점을 맨 앞에 맞추고 고음을 올려 짧게 다듬는다. */
-function snap(name, id, at) {
-  let x = decode(clap(id), 'highpass=f=350,highshelf=f=3000:g=4', Math.max(0, at - 0.05), 0.5);
-  x = alignPeak(x, 0.003);
-  x = x.slice(0, Math.round(0.24 * SR));
-  x = envelope(x, 0.03, 0.06);
-  write(name, finish(x, 1.0, -0.8));
+/**
+ * id 녹음의 at초 근처 한 대만 잘라 최고점을 맨 앞에 맞춘다.
+ * "짝 달라붙는" 느낌: 울림을 거의 남기지 않고 아주 짧게 끊고(hold 15ms, 감쇠 30ms),
+ * 손바닥이 착 붙는 몸통(500Hz 근처)을 조금 올리고, 세게 눌러(포화) 크고 단단하게 만든다.
+ */
+function snap(name, id, at, opts = {}) {
+  const body = opts.body ?? 3, shelf = opts.shelf ?? 4;
+  let x = decode(clap(id), 'highpass=f=250,equalizer=f=500:t=q:w=1.2:g=' + body + ',highshelf=f=3000:g=' + shelf, Math.max(0, at - 0.05), 0.5);
+  x = alignPeak(x, 0.002);
+  x = x.slice(0, Math.round((opts.len ?? 0.16) * SR));
+  x = envelope(x, opts.hold ?? 0.015, opts.tau ?? 0.03);
+  write(name, finish(x, opts.drive ?? 2.4, -1.6)); // 압축(ogg) 뒤 최고점이 0dB를 넘지 않게 여유
   return x;
 }
-const s1 = snap('snap', '232928', 2.128);   // 가장 밝은 뺨 소리 (평균 6.2kHz)
-const s2 = snap('snap2', '539163', 0.184);  // 손바닥으로 탁 (4.8kHz)
-const s3 = snap('snap3', '232928', 5.098);  // 같은 녹음의 다른 한 대 (5.0kHz)
+snap('snap', '232928', 2.128);   // 가장 밝은 뺨 소리 (평균 6.2kHz)
+snap('snap2', '539163', 0.184);  // 손바닥으로 탁 (4.8kHz)
+snap('snap3', '232928', 5.098);  // 같은 녹음의 다른 한 대 (5.0kHz)
 
-// ------------------------------------------------------------ 쌌다: 박수 짝·짝·짝! 세 번만 (다른 소리 없이), 마지막이 가장 크게
+// ------------------------------------------------------------ 쌌다: 한 번만, 짝보다 크고 묵직하게
+snap('stack_slap', '232928', 2.128, { body: 6, shelf: 2, len: 0.3, hold: 0.03, tau: 0.07, drive: 3.0 });
+
+// ------------------------------------------------------------ 광 도장 (클리어 창에서 광이 하나씩 찍힐 때): 나무 도장 쿵
 {
-  let x = mix([
-    { data: s1, gain: 0.6, delay: 0.0 },
-    { data: s2, gain: 0.8, delay: 0.13 },
-    { data: s3, gain: 1.0, delay: 0.27 },
-  ], 0.6);
-  write('stack_slap', finish(envelope(x, 0.4, 0.08), 1.0, -0.8));
+  const src = decode(find(IMPACT, 'impactWood_heavy_000.ogg'), 'lowpass=f=4000');
+  const base = alignPeak(src, 0.003);
+  ['stamp', 'stamp2', 'stamp3'].forEach((name, i) => {
+    // 광이 찍힐수록 조금씩 높아진다 (재생 속도를 올려 음높이를 올린다).
+    const rate = 1 + i * 0.08;
+    const n = Math.floor(base.length / rate);
+    let x = new Float32Array(n);
+    for (let k = 0; k < n; k++) x[k] = base[Math.floor(k * rate)];
+    x = x.slice(0, Math.round(0.3 * SR));
+    write(name, finish(envelope(x, 0.04, 0.08), 1.6, -1));
+  });
 }
 
 // ------------------------------------------------------------ 패 집기: 카드를 살짝 미는 소리 앞부분

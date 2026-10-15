@@ -91,10 +91,11 @@ public class TitleScreen : MonoBehaviour, IBackHandler
         {
             if (play) play.transform.localScale = Vector3.one * (1f + 0.025f * Mathf.Sin(Time.unscaledTime * 4f));
         });
-        var stages = Ui.Button(rt, new Vector2(400f, 130f), Art.Red, Art.RedDark, Loc.T("스테이지", "Stages"), Art.IconGrid, () => App.I.ShowStages(frontier), 50, "Stages");
-        Ui.Place((RectTransform)stages.transform, 0.5f, 0.2f, new Vector2(400f, 130f), new Vector2(-110f, -150f));
+        // 아래 줄(스테이지 + 설정)의 양 끝을 위 이어하기 버튼(폭 640)의 양 끝에 맞춘다: 490 + 간격 20 + 130 = 640
+        var stages = Ui.Button(rt, new Vector2(490f, 130f), Art.Red, Art.RedDark, Loc.T("스테이지", "Stages"), Art.IconGrid, () => App.I.ShowStages(frontier), 50, "Stages");
+        Ui.Place((RectTransform)stages.transform, 0.5f, 0.2f, new Vector2(490f, 130f), new Vector2(-75f, -150f));
         var settings = Ui.IconButton(rt, 130f, Art.Wood, Art.WoodDark, Art.IconGear, () => Tips.ShowSettings(Build), "Settings");
-        Ui.Place((RectTransform)settings.transform, 0.5f, 0.2f, new Vector2(130f, 130f), new Vector2(200f, -150f));
+        Ui.Place((RectTransform)settings.transform, 0.5f, 0.2f, new Vector2(130f, 130f), new Vector2(255f, -150f));
 
         // 언어 빠른 전환
         var lang = Ui.Button(rt, new Vector2(150f, 90f), Art.Wood, Art.WoodDark, Loc.Korean ? "EN" : "한글", null, () =>

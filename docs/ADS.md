@@ -5,7 +5,7 @@
 |---|---|---|
 | 하단 배너 | 모든 화면 맨 아래. 화면은 배너 높이만큼 위로 비켜 그린다 | `Ads.LoadBanner`, `App.ApplySafeArea` |
 | 전면 | 스테이지를 깨고 **다음 스테이지** 버튼을 눌렀을 때 | `GameScreen.Win` → `Ads.TryShowInterstitial` |
-| 보상형(힌트) | 힌트가 0개일 때 힌트 버튼 → 힌트 +2 (바로 하나 사용) | `GameScreen.OnHint` |
+| 보상형(추가 시간) | 클리어 창에서 광을 다 못 땄을 때 "+N초 받고 다시 하기" → N초(3광 기준의 20%, 최소 10초)를 미리 받고 그 판을 다시 시작 | `GameScreen.ShowResult`, `App.Play(stage, bonus)` |
 | 보상형(부활) | 시간 초과 창의 "+N초 이어하기" (한 판에 2번까지, N = 제한 시간의 30%, 최소 30초) | `GameScreen.TimeUp` |
 
 전면 광고 빈도(`AdConfig.json`):
@@ -22,18 +22,18 @@
     "appId": "ca-app-pub-XXXXXXXX~YYYYYYYY",
     "banner": "ca-app-pub-XXXXXXXX/1111111111",
     "interstitial": "ca-app-pub-XXXXXXXX/2222222222",
-    "rewardedHint": "ca-app-pub-XXXXXXXX/3333333333",
+    "rewardedTime": "ca-app-pub-XXXXXXXX/3333333333",
     "rewardedRevive": "ca-app-pub-XXXXXXXX/4444444444"
   }
 }
 ```
-- `appId`(물결표 `~`)는 에디터의 `AdsSetup`이 저장 즉시 Google Mobile Ads 설정으로 옮긴다 (메뉴 `Tools/Hwatu Shisen-Sho/Sync AdMob App IDs`로도 가능).
+- `appId`(물결표 `~`)는 에디터의 `AdsSetup`이 저장 즉시 Google Mobile Ads 설정으로 옮긴다 (메뉴 `Tools/Hwatu Solitaire/Sync AdMob App IDs`로도 가능).
 - 광고 단위 ID(슬래시 `/`)가 비었거나 형식이 틀리면 그 자리는 구글 테스트 광고로 대체된다 (로그 경고).
 - `useTestAds: true`이면 모든 자리에 구글 테스트 광고. **출시 전 false로.** 릴리스 AAB 빌드 때 true면 경고한다.
 - 내 폰에서 실제 ID로 시험할 때는 `testDeviceIds`에 기기 ID(로그캣에 찍힘)를 넣는다.
 
 ## AdMob에서 만들 광고 단위
-앱 1개 + 광고 단위 4개: 배너(적응형) 1, 전면 1, 보상형 2(힌트, 부활 — 따로 만들어야 어느 쪽이 얼마나 보였는지 나뉜다).
+앱 1개 + 광고 단위 4개: 배너(적응형) 1, 전면 1, 보상형 2(추가 시간, 부활 — 따로 만들어야 어느 쪽이 얼마나 보였는지 나뉜다).
 
 ## 동작 메모
 - 플러그인: `Packages/manifest.json`의 `com.google.ads.mobile`(OpenUPM). `Assets/csc.rsp`의 `-define:ADMOB`이 있어야 실제 광고 코드가 컴파일된다.

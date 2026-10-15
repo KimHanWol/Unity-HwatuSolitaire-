@@ -55,22 +55,5 @@ namespace HwatuSolitaire.Core
             }
             return moves[rng.Next(moves.Count)];
         }
-
-        /// <summary>힌트: 지금 둘 수 있는 짝 가운데 그 뒤로도 끝까지 풀리는 짝. 시간 안에 못 찾으면 아무 짝이나. 폭탄 달은 뺀다.</summary>
-        public static Move? Hint(Board board, bool[] skipMonth, int seed)
-        {
-            var moves = Rules.FindMoves(board, skipMonth);
-            if (moves.Count == 0) return null;
-            var rng = new Rng(seed);
-            rng.Shuffle(moves);
-            int checks = System.Math.Min(moves.Count, 8);
-            for (int i = 0; i < checks; i++)
-            {
-                var b = board.Clone();
-                Rules.Remove(b, moves[i].A, moves[i].B);
-                if (b.Cleared || Solve(b, rng.Next(int.MaxValue), 3) != null) return moves[i];
-            }
-            return moves[0];
-        }
     }
 }

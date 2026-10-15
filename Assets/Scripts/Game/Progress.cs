@@ -3,20 +3,16 @@ using HwatuSolitaire.Core;
 using UnityEngine;
 
 /// <summary>
-/// 스테이지 진행(별), 가장 빠른 기록, 힌트 개수. PlayerPrefs에 저장한다.
+/// 스테이지 진행(광), 가장 빠른 기록, 황금 광. PlayerPrefs에 저장한다.
 /// 별은 스테이지 순서대로 '0'~'3' 글자 300개짜리 문자열 하나로 둔다.
 /// </summary>
 public static class Progress
 {
     const string StarsKey = "Stars";
     const string BestKey = "BestTimes";
-    const string HintKey = "Hints";
     const string LastKey = "LastStage";
     const string GoldenKey = "Golden";
 
-    public const int StartingHints = 3;
-    /// <summary>힌트 광고 한 번에 얻는 힌트 수.</summary>
-    public const int HintsPerAd = 2;
 
     static char[] stars;
     static int[] best;
@@ -101,12 +97,6 @@ public static class Progress
     {
         get => Mathf.Clamp(PlayerPrefs.GetInt(LastKey, 1), 1, StageGenerator.StageCount);
         set { PlayerPrefs.SetInt(LastKey, value); PlayerPrefs.Save(); }
-    }
-
-    public static int Hints
-    {
-        get => PlayerPrefs.GetInt(HintKey, StartingHints);
-        set { PlayerPrefs.SetInt(HintKey, Mathf.Max(0, value)); PlayerPrefs.Save(); }
     }
 
     /// <summary>싹쓸이로 깬 적이 있으면 황금 광 (광 개수와는 따로).</summary>

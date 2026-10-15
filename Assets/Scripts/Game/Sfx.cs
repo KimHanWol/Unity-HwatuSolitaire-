@@ -7,7 +7,7 @@ using UnityEngine;
 /// - 폭탄: 낮게 떨어지는 쾅 + 터지는 잡음 + 파편 튀는 소리
 /// - 배경음: 가야금 같은 뜯는 소리(Karplus-Strong)로 평조(궁상각치우) 가락
 /// 실제 녹음으로 바꾸려면 Resources/Audio/<이름>.wav|ogg 를 두면 그쪽을 우선 쓴다
-/// (snap, select, deny, stack, bomb, shuffle, clear, star, fail, hint, click, tick, slide, bgm).
+/// (snap, select, deny, stack, bomb, shuffle, clear, star, fail, click, tick, slide, bgm).
 /// </summary>
 public class Sfx : MonoBehaviour
 {
@@ -24,7 +24,7 @@ public class Sfx : MonoBehaviour
     AudioClip stackSlap;
     AudioClip golden;
     AudioClip blocked;
-    AudioClip select, deny, stack, bomb, shuffle, clear, fail, hint, click, tick, slide, revive;
+    AudioClip select, deny, stack, bomb, shuffle, clear, fail, click, tick, slide, revive;
     float lastSnap;
 
     public static void Select() => Play(i => i.select, 0.45f);
@@ -40,7 +40,6 @@ public class Sfx : MonoBehaviour
     public static void Shuffle() => Play(i => i.shuffle, 0.6f);
     public static void Clear() => Play(i => i.clear, 0.8f);
     public static void Fail() => Play(i => i.fail, 0.7f);
-    public static void Hint() => Play(i => i.hint, 0.5f);
     public static void Click() => Play(i => i.click, 0.45f);
     public static void Tick() => Play(i => i.tick, 0.5f);
     public static void Slide() => Play(i => i.slide, 0.25f);
@@ -130,7 +129,6 @@ public class Sfx : MonoBehaviour
         shuffle = Load("shuffle", BuildShuffle);
         clear = Load("clear", BuildClear);
         fail = Load("fail", BuildFail);
-        hint = Load("hint", BuildHint);
         click = Load("click", BuildClick);
         tick = Load("tick", BuildTick);
         slide = Load("slide", BuildSlide);
@@ -437,14 +435,6 @@ public class Sfx : MonoBehaviour
         return ToClip("fail", Normalize(b, 0.7f));
     }
 
-    AudioClip BuildHint()
-    {
-        var b = new float[(int)(0.7f * Rate)];
-        Bell(b, 0f, Freq(88), 0.3f, 0.4f);
-        Bell(b, 0.07f, Freq(91), 0.3f, 0.4f);
-        Bell(b, 0.14f, Freq(96), 0.5f, 0.45f);
-        return ToClip("hint", Normalize(b, 0.6f));
-    }
 
     AudioClip BuildRevive()
     {

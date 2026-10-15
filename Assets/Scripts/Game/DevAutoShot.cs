@@ -65,9 +65,6 @@ public class DevAutoShot : MonoBehaviour
         yield return Wait(0.25f);
         yield return Shot("boom");
         yield return Wait(1.0f);
-        game.DevHint();
-        yield return Wait(0.3f);
-        yield return Shot("hint");
         game.DevPause();
         yield return Wait(0.5f);
         yield return Shot("pause");

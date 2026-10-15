@@ -17,11 +17,11 @@ public class CardView : MonoBehaviour, IPointerDownHandler
 
     public Action<CardView> Pressed;
 
-    Image face, shadow, glow, hintGlow, bombGlow, bombIcon;
+    Image face, shadow, glow, bombGlow, bombIcon;
     RectTransform lift;
     Text monthText;
     GameObject monthBadge;
-    bool selected, hinted, bomb;
+    bool selected, bomb;
     float pulse;
 
     public static CardView Create(Transform parent, int value, Vector2 size)
@@ -43,8 +43,6 @@ public class CardView : MonoBehaviour, IPointerDownHandler
 
         glow = Ui.Image(Rt, Art.Glow, new Color(1f, 0.85f, 0.3f, 0f), "Glow");
         Ui.Place(glow.rectTransform, 0.5f, 0.5f, size * 1.6f);
-        hintGlow = Ui.Image(Rt, Art.Glow, new Color(0.4f, 0.9f, 1f, 0f), "HintGlow");
-        Ui.Place(hintGlow.rectTransform, 0.5f, 0.5f, size * 1.7f);
         bombGlow = Ui.Image(Rt, Art.Glow, new Color(1f, 0.3f, 0.1f, 0f), "BombGlow");
         Ui.Place(bombGlow.rectTransform, 0.5f, 0.5f, size * 1.7f);
 
@@ -130,12 +128,6 @@ public class CardView : MonoBehaviour, IPointerDownHandler
         }
     }
 
-    public bool Hinted
-    {
-        get => hinted;
-        set => hinted = value;
-    }
-
     public bool Bomb
     {
         get => bomb;
@@ -173,7 +165,6 @@ public class CardView : MonoBehaviour, IPointerDownHandler
         pulse += Time.unscaledDeltaTime;
         float wave = 0.5f + 0.5f * Mathf.Sin(pulse * 6f);
         glow.color = new Color(1f, 0.85f, 0.3f, Mathf.MoveTowards(glow.color.a, selected ? 0.75f + 0.25f * wave : 0f, Time.unscaledDeltaTime * 6f));
-        hintGlow.color = new Color(0.4f, 0.95f, 1f, hinted ? 0.45f + 0.5f * wave : Mathf.MoveTowards(hintGlow.color.a, 0f, Time.unscaledDeltaTime * 4f));
         bombGlow.color = new Color(1f, 0.35f, 0.1f, bomb ? 0.35f + 0.35f * wave : 0f);
         if (bomb) bombIcon.rectTransform.localEulerAngles = new Vector3(0f, 0f, Mathf.Sin(pulse * 9f) * 10f);
     }

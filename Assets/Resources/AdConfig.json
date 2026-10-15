@@ -8,14 +8,14 @@
     "appId": "",
     "banner": "",
     "interstitial": "",
-    "rewardedHint": "",
+    "rewardedTime": "",
     "rewardedRevive": ""
   },
   "ios": {
     "appId": "",
     "banner": "",
     "interstitial": "",
-    "rewardedHint": "",
+    "rewardedTime": "",
     "rewardedRevive": ""
   }
 }

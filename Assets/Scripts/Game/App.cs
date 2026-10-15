@@ -185,11 +185,12 @@ public class App : MonoBehaviour
 
     public void ShowStages(int focus = 0) => Swap<StageSelectScreen>().Build(focus > 0 ? focus : Progress.LastPlayed);
 
-    public void Play(int stage)
+    /// <summary>스테이지 시작. bonusSeconds를 주면 그만큼 시간을 미리 받고 시작한다 (결과 창의 "추가 시간 받고 다시 하기").</summary>
+    public void Play(int stage, int bonusSeconds = 0)
     {
         stage = Mathf.Clamp(stage, 1, Stages.stages.Length);
         Progress.LastPlayed = stage;
-        Swap<GameScreen>().Begin(Stage(stage));
+        Swap<GameScreen>().Begin(Stage(stage), bonusSeconds);
     }
 
     // ------------------------------------------------------------ 팝업

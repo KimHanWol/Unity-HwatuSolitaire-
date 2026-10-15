@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 게임 화면. 위: 일시정지·스테이지 이름·남은 시간과 광 기준. 가운데: 판. 아래: 쌌다(폭탄) 칸·힌트.
+/// 게임 화면. 위: 일시정지·스테이지 이름·남은 시간과 광 기준. 가운데: 판. 아래: 쌌다(폭탄) 칸.
 ///
 /// 규칙(화투 솔리테어, 타일 매치 방식): 패가 여러 층으로 쌓여 있다. 위가 덮이지 않은 "열린 패" 두 장이 같은 달이면
 /// "짝!" 하고 지운다 (옆은 상관없다). 덮인 패는 살짝 어둡게 보인다.
@@ -27,7 +27,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
     // 자리 번호(Layout.Tiles 순서)마다 그 자리 패 (지워졌으면 null)
     CardView[] views;
     CardView selected;
-    CardView[] hint;
 
     RectTransform boardArea, shakeRoot, boardRoot;
     // 패 한 장 크기(cellW x cellH)와 층마다 비키는 거리
@@ -35,6 +34,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
     Vector2 layerShift, boardOrigin;
 
     float elapsed, bonusTime;
+    // 결과 창에서 광고로 받은 추가 시간(초)
+    int bonus;
     bool running, finished;
     int revives;
     // 짝을 맞춘 뒤 셋째 패를 기다리는 뭉치 (없으면 pending == null)
@@ -49,10 +50,10 @@ public class GameScreen : MonoBehaviour, IBackHandler
     int lastTickSecond = -1;
     readonly List<int> bombs = new List<int>();
     int matches;
-    // 마지막으로 패를 지운 수가 폭탄이었는지 (판을 폭탄으로 비우면 싹쓸이)
-    bool lastWasBomb;
     // 폭탄 달 패만 남아 폭탄이 저절로 터지는 마무리 중
     bool finale;
+    // 폭탄 3개를 다 모은 채 마무리가 시작됐는지 → 그 폭탄들로 판을 다 비우면 싹쓸이
+    bool finaleWithFullTray;
     bool sweep;
 
     // HUD
@@ -70,27 +71,28 @@ public class GameScreen : MonoBehaviour, IBackHandler
     static readonly float[] FanOffsets = { -4f, 4f, 0f };
     // 기울인 뒤쪽 두 장은 모서리가 칸 아래로 처지지 않게 조금 올린다.
     static readonly float[] FanLift = { 5f, 5f, 0f };
-    Text hintCount;
-    Image hintAd;
-    RectTransform hintButton;
     Text toast;
 
     bool Paused => !running || App.I.PopupOpen || Ads.Showing;
     float Limit => def.timeLimit + bonusTime;
 
-    public void Begin(StageDef stage)
+    /// <summary>bonusSeconds: 미리 받은 추가 시간. 시계가 그만큼 거꾸로(-) 시작해서 제한 시간과 광 기준 모두에 여유가 생긴다.</summary>
+    public void Begin(StageDef stage, int bonusSeconds = 0)
     {
         def = stage;
+        bonus = Mathf.Max(0, bonusSeconds);
+        elapsed = -bonus;
         board = def.CreateBoard();
         rng = new Rng(def.number * 31 + System.Environment.TickCount);
         BuildHud();
         BuildBoard();
         App.I.LayoutChanged += Relayout;
         running = true;
-        RefreshHint();
         RefreshTray();
         RefreshTimer();
         ShowTipIfNeeded();
+        if (bonus > 0)
+            Anim.Delay(this, 0.8f, () => Fx.PopText(timeText.rectTransform.position, "+" + bonus + Loc.T("초", "s"), 80, Color.white, Art.BlueDark, 120f, 1.4f));
     }
 
     void OnDestroy()
@@ -160,14 +162,14 @@ public class GameScreen : MonoBehaviour, IBackHandler
         Ui.Place(timeText.rectTransform, 1f, 0.5f, new Vector2(180f, 80f), new Vector2(-100f, 0f));
         Ui.Outline(timeText, Art.WoodDark, 3f);
 
-        // 아래 띠: 쌌다 칸 / 힌트
+        // 아래 띠: 쌌다(폭탄) 칸
         var bottom = Ui.Rect("Bottom", rt);
         bottom.anchorMin = new Vector2(0f, 0f);
         bottom.anchorMax = new Vector2(1f, 0f);
         bottom.pivot = new Vector2(0.5f, 0f);
         bottom.sizeDelta = new Vector2(0f, BottomBar);
         var tray = Ui.Rect("Tray", bottom);
-        Ui.Place(tray, 0f, 0.5f, new Vector2(560f, 200f), new Vector2(320f, 0f));
+        Ui.Place(tray, 0.5f, 0.5f, new Vector2(600f, 200f));
         var trayBg = Ui.Image(tray, Art.Round, new Color(0f, 0f, 0f, 0.35f), "Bg");
         Ui.Stretch(trayBg.rectTransform);
         var trayEdge = Ui.Image(tray, Art.RoundOutline, new Color(Art.Gold.r, Art.Gold.g, Art.Gold.b, 0.6f), "Edge");
@@ -212,16 +214,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
             btn.onClick.AddListener(() => PeekBomb(index));
         }
 
-
-        var hintBtn = Ui.Button(bottom, new Vector2(220f, 180f), Art.Blue, Art.BlueDark, Loc.T("힌트", "Hint"), Art.IconBulb, OnHint, 46, "Hint");
-        hintButton = (RectTransform)hintBtn.transform;
-        Ui.Place(hintButton, 1f, 0.5f, new Vector2(220f, 180f), new Vector2(-140f, 0f));
-        var badge = Ui.Image(hintButton, Art.Circle128, Art.Red, "Badge");
-        Ui.Place(badge.rectTransform, 1f, 1f, new Vector2(78f, 78f), new Vector2(-12f, -6f));
-        hintCount = Ui.Text(badge.rectTransform, "0", 44, Color.white, TextAnchor.MiddleCenter, "Count");
-        Ui.Stretch(hintCount.rectTransform);
-        hintAd = Ui.Image(badge.rectTransform, Art.IconVideo, Color.white, "Ad");
-        Ui.Place(hintAd.rectTransform, 0.5f, 0.5f, new Vector2(46f, 46f));
 
         // 판 자리
         boardArea = Ui.Rect("BoardArea", rt);
@@ -394,7 +386,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
     // ------------------------------------------------------------ 짝
     void Match(CardView a, CardView b)
     {
-        ClearHint();
         selected = null;
         a.Selected = false;
         views[a.Index] = null;
@@ -402,7 +393,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
         int month = Board.Month(a.Value);
 
         matches++;
-        lastWasBomb = false;
         // 앞서 기다리던 뭉치는 여기서 끝난다.
         FinishPending();
 
@@ -502,7 +492,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
     {
         var p = pending;
         pending = null;
-        ClearHint();
         if (selected != null) { selected.Selected = false; selected = null; }
         if (p.ring != null) Destroy(p.ring.gameObject);
 
@@ -592,8 +581,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
         {
             finished = true;
             running = false;
-            // 폭탄으로 판을 비우면 싹쓸이 → 황금 광
-            sweep = lastWasBomb;
+            // 폭탄 3개를 다 모은 채, 그 폭탄들만으로 판을 다 비우면 싹쓸이 → 황금 광
+            sweep = finale && finaleWithFullTray;
             Anim.Delay(this, delay + 0.25f, Win);
             return;
         }
@@ -622,8 +611,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
     {
         if (finished || !OnlyBombsLeft()) return;
         finale = true;
+        finaleWithFullTray = bombs.Count >= MaxBombs;
         running = false;
-        ClearHint();
         if (selected != null) { selected.Selected = false; selected = null; }
         FinishPending();
         Fx.Stamp(Loc.T("폭탄 마무리!", "BOMB FINISH!"), Loc.T("남은 패를 한 번에 펑!", "Blasting everything left!"), Art.Gold, Art.RedDark);
@@ -632,7 +621,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         for (int k = 0; k < months.Count; k++)
         {
             int month = months[k];
-            Anim.Delay(this, 0.9f + k * 0.65f, () =>
+            Anim.Delay(this, 0.55f + k * 0.3f, () =>
             {
                 if (this == null) return;
                 var tiles = board.TilesOfMonth(month);
@@ -676,7 +665,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
 
     void ShuffleBoard()
     {
-        ClearHint();
         if (selected != null) { selected.Selected = false; selected = null; }
         ShowToast(Loc.T("짝이 없어서 패를 섞어요!", "No pairs left - shuffling!"));
         var move = Rules.Shuffle(board, rng);
@@ -751,8 +739,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
 
     void Detonate(int origin, int month, bool wholeMonth = false)
     {
-        lastWasBomb = true;
-        ClearHint();
         if (selected != null) { selected.Selected = false; selected = null; }
         int slotIndex = bombs.IndexOf(month);
         if (slotIndex >= 0)
@@ -861,66 +847,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
         return Mathf.Sqrt(dx * dx + dy * dy);
     }
 
-    // ------------------------------------------------------------ 힌트
-    void OnHint()
-    {
-        if (Paused || finished) return;
-        if (Progress.Hints > 0)
-        {
-            if (ShowHint()) Progress.Hints--;
-            RefreshHint();
-            return;
-        }
-        if (!Ads.RewardedReady(Ads.Reward.Hint))
-        {
-            ShowToast(Loc.T("광고를 불러오는 중이에요. 잠시 뒤 다시 눌러 주세요", "Loading an ad... please try again soon"));
-            return;
-        }
-        Ads.ShowRewarded(Ads.Reward.Hint, ok =>
-        {
-            if (!ok || this == null) return;
-            Progress.Hints += Progress.HintsPerAd;
-            Fx.PopText(hintButton.position, "+" + Progress.HintsPerAd, 80, Color.white, Art.BlueDark);
-            if (ShowHint()) Progress.Hints--;
-            RefreshHint();
-        });
-    }
-
-    bool ShowHint()
-    {
-        ClearHint();
-        var move = Solver.Hint(board, BombMask(), rng.Next(int.MaxValue));
-        if (move == null)
-        {
-            if (bombs.Count > 0)
-            {
-                ShowToast(Loc.T("폭탄 칸의 패를 눌러 보세요!", "Try using a bomb!"));
-                foreach (var s in traySlots) Anim.Pop(s, 0.25f, 0.4f);
-            }
-            return false;
-        }
-        var m = move.Value;
-        hint = new[] { views[m.A], views[m.B] };
-        foreach (var v in hint) if (v != null) v.Hinted = true;
-        Sfx.Hint();
-        return true;
-    }
-
-    void ClearHint()
-    {
-        if (hint == null) return;
-        foreach (var v in hint) if (v != null) v.Hinted = false;
-        hint = null;
-    }
-
-    void RefreshHint()
-    {
-        int n = Progress.Hints;
-        hintCount.gameObject.SetActive(n > 0);
-        hintCount.text = n.ToString();
-        hintAd.gameObject.SetActive(n <= 0);
-    }
-
     // ------------------------------------------------------------ 시간
     void Update()
     {
@@ -969,7 +895,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
     void TimeUp()
     {
         running = false;
-        ClearHint();
         if (selected != null) { selected.Selected = false; selected = null; }
         Sfx.Fail();
         Settings.Haptic(120, 200);
@@ -1017,7 +942,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
     // ------------------------------------------------------------ 클리어
     void Win()
     {
-        int seconds = Mathf.CeilToInt(elapsed);
+        // 추가 시간을 받았으면 그만큼 빼고 잰다 (시계가 -bonus 에서 시작했으므로 elapsed 그대로).
+        int seconds = Mathf.Max(1, Mathf.CeilToInt(elapsed));
         int stars = revives > 0 ? 1 : def.StarsFor(elapsed);
         int prevBest = Progress.BestSeconds(def.number);
         bool newBest = Progress.Record(def.number, stars, seconds);
@@ -1025,76 +951,116 @@ public class GameScreen : MonoBehaviour, IBackHandler
         Sfx.Clear();
         Settings.Haptic(80, 180);
         Fx.Confetti(sweep ? 120 : 70);
-        if (sweep) Fx.Stamp(Loc.T("싹쓸이!", "SWEEP!"), Loc.T("폭탄으로 판을 싹 비웠어요 · 황금 광!", "Bombed the board clean · Golden Gwang!"), Art.Gold, Art.RedDark, -6f);
+        if (sweep) Fx.Stamp(Loc.T("싹쓸이!", "SWEEP!"), Loc.T("폭탄 셋으로 판을 싹 비웠어요!", "Three bombs cleared the board!"), Art.Gold, Art.RedDark, -6f);
         else Fx.Stamp(Loc.T("클리어!", "CLEAR!"), null, Art.Gold, Art.RedDark, 0f);
+        Anim.Delay(this, 1.1f, () => ShowResult(seconds, stars, prevBest, newBest));
+    }
 
-        Anim.Delay(this, 1.1f, () =>
+    /// <summary>"추가 시간 받고 다시 하기" 광고로 받는 시간(초): 3광 기준의 20%, 5초 단위, 최소 10초.</summary>
+    int BonusSeconds => Mathf.Max(10, Mathf.RoundToInt(def.star3 * 0.2f / 5f) * 5);
+
+    /// <summary>
+    /// 결과 창: 광 셋(도장처럼 하나씩) → 싹쓸이면 황금 광 띠 → 걸린 시간·최고 기록
+    /// → 광을 다 못 땄으면 "추가 시간 받고 다시 하기"(보상형 광고: N초를 미리 받고 그 판을 다시 시작) → 다음·다시·목록.
+    /// </summary>
+    void ShowResult(int seconds, int stars, int prevBest, bool newBest)
+    {
+        bool last = def.number >= App.I.Stages.stages.Length;
+        bool canCharge = stars < 3 && revives == 0;
+        float y = 0f;
+        float height = 420f + (sweep ? 190f : 0f) + 160f + (canCharge ? 150f : 0f) + (last ? 0f : 190f) + 170f;
+        var p = Popup.Open(new Vector2(900f, height), Loc.T("스테이지 ", "Stage ") + def.number + Loc.T(" 클리어", " Clear"));
+        p.CanClose = false;
+        p.OnBackPressed = () => App.I.ShowStages(def.number);
+
+        // 큰 광 셋이 차례로 찍힌다.
+        var slots = new RectTransform[3];
+        for (int i = 0; i < 3; i++)
         {
-            bool last = def.number >= App.I.Stages.stages.Length;
-            var p = Popup.Open(new Vector2(900f, 990f), Loc.T("스테이지 ", "Stage ") + def.number + Loc.T(" 클리어", " Clear"));
-            p.CanClose = false;
-            p.OnBackPressed = () => App.I.ShowStages(def.number);
-
-            // 큰 광 셋이 차례로 도장처럼 찍힌다.
-            for (int i = 0; i < 3; i++)
+            var slot = Ui.Image(p.Panel, Art.Gwang, new Color(0f, 0f, 0f, 0.15f), "GwangSlot" + i);
+            float size = i == 1 ? 210f : 170f;
+            Ui.Place(slot.rectTransform, 0.5f, 1f, new Vector2(size, size), new Vector2((i - 1) * 220f, i == 1 ? -230f : -260f));
+            slots[i] = slot.rectTransform;
+        }
+        void StampGwang(int i, float delay)
+        {
+            var star = Ui.Image(slots[i], Art.Gwang, Color.white, "Gwang");
+            Ui.Stretch(star.rectTransform);
+            star.rectTransform.localScale = Vector3.zero;
+            Anim.Run(star, 0.3f, t => star.rectTransform.localScale = Vector3.one * Mathf.Lerp(2.4f, 1f, Anim.InCubic(t)), () =>
             {
-                var slot = Ui.Image(p.Panel, Art.Gwang, new Color(0f, 0f, 0f, 0.15f), "GwangSlot" + i);
-                float size = i == 1 ? 210f : 170f;
-                Ui.Place(slot.rectTransform, 0.5f, 1f, new Vector2(size, size), new Vector2((i - 1) * 220f, i == 1 ? -230f : -260f));
-                if (i >= stars) continue;
-                var star = Ui.Image(slot.rectTransform, Art.Gwang, Color.white, "Gwang");
-                Ui.Stretch(star.rectTransform);
-                star.rectTransform.localScale = Vector3.zero;
-                int index = i;
-                Anim.Run(star, 0.3f, t => star.rectTransform.localScale = Vector3.one * Mathf.Lerp(2.4f, 1f, Anim.InCubic(t)), () =>
-                {
-                    Sfx.Star(index);
-                    Fx.Burst(star.rectTransform.position, 14, Fx.FireColors, 700f, Art.Spark, 0.6f, 30f, -1000f);
-                }, 0.25f + i * 0.35f);
-            }
+                Sfx.Star(i);
+                Fx.Burst(star.rectTransform.position, 14, Fx.FireColors, 700f, Art.Spark, 0.6f, 30f, -1000f);
+            }, delay);
+        }
+        for (int i = 0; i < stars; i++) StampGwang(i, 0.25f + i * 0.35f);
+        y = 400f;
 
-            // 싹쓸이: 광 셋 다음에 황금 광이 오른쪽 위에 따로 찍힌다 (광 개수와는 별개).
-            if (sweep)
+        // 싹쓸이: 광 아래 밝은 금빛 띠에 황금 광 (광 개수와는 별개)
+        if (sweep)
+        {
+            var band = Ui.Rect("Sweep", p.Panel);
+            Ui.Place(band, 0.5f, 1f, new Vector2(700f, 160f), new Vector2(0f, -(y + 70f)));
+            var rays = Ui.Image(band, Art.Glow, new Color(1f, 0.92f, 0.45f, 0.9f), "Rays");
+            Ui.Place(rays.rectTransform, 0.5f, 0.5f, new Vector2(820f, 300f));
+            var bg = Ui.Image(band, Art.Round, new Color32(0xFF, 0xE0, 0x6A, 0xFF), "Bg");
+            Ui.Stretch(bg.rectTransform);
+            var edge = Ui.Image(band, Art.RoundOutline, new Color32(0xFF, 0xF8, 0xD8, 0xFF), "Edge");
+            Ui.Stretch(edge.rectTransform, 5f);
+            var coin = Ui.Image(band, Art.GwangGold, Color.white, "Coin");
+            Ui.Place(coin.rectTransform, 0f, 0.5f, new Vector2(150f, 150f), new Vector2(100f, 6f));
+            var title = Ui.Text(band, Loc.T("싹쓸이!", "SWEEP!"), 66, Color.white, TextAnchor.MiddleLeft, "Title");
+            Ui.Place(title.rectTransform, 0f, 0.5f, new Vector2(480f, 80f), new Vector2(200f + 240f, 22f));
+            Ui.Outline(title, new Color32(0xC8, 0x6E, 0x00, 0xFF), 4f);
+            var sub = Ui.Text(band, Loc.T("황금 광을 얻었어요", "Golden Gwang earned"), 36, new Color32(0x8A, 0x3C, 0x00, 0xFF), TextAnchor.MiddleLeft, "Sub");
+            Ui.Place(sub.rectTransform, 0f, 0.5f, new Vector2(480f, 50f), new Vector2(200f + 240f, -38f));
+            band.localScale = Vector3.zero;
+            Anim.Run(band, 0.45f, t => band.localScale = Vector3.one * Anim.OutBack(t), () =>
             {
-                var gold = Ui.Rect("Golden", p.Panel);
-                Ui.Place(gold, 1f, 1f, new Vector2(150f, 150f), new Vector2(-95f, -110f));
-                var glow = Ui.Image(gold, Art.Glow, new Color(1f, 0.85f, 0.3f, 0.8f), "Glow");
-                Ui.Place(glow.rectTransform, 0.5f, 0.5f, new Vector2(300f, 300f));
-                var coin = Ui.Image(gold, Art.GwangGold, Color.white, "Coin");
-                Ui.Stretch(coin.rectTransform);
-                var tag = Ui.Text(gold, Loc.T("싹쓸이", "Sweep"), 34, Art.RedDark, TextAnchor.MiddleCenter, "Tag");
-                Ui.Place(tag.rectTransform, 0.5f, 0f, new Vector2(200f, 44f), new Vector2(0f, -20f));
-                gold.localScale = Vector3.zero;
-                Anim.Run(gold, 0.45f, t =>
-                {
-                    gold.localScale = Vector3.one * Anim.OutBack(t);
-                    gold.localEulerAngles = new Vector3(0f, 0f, (1f - t) * 180f + 10f);
-                }, () =>
-                {
-                    Sfx.Golden();
-                    Fx.Burst(gold.position, 30, Fx.FireColors, 900f, Art.Star, 0.9f, 34f, -800f);
-                    Anim.Run(glow, 100000f, t => glow.rectTransform.localEulerAngles = new Vector3(0f, 0f, Time.unscaledTime * 40f));
-                }, 0.35f + stars * 0.35f);
-            }
+                Sfx.Golden();
+                Fx.Burst(coin.rectTransform.position, 30, Fx.FireColors, 900f, Art.Star, 0.9f, 34f, -800f);
+                Anim.Run(coin, 100000f, t => coin.rectTransform.localScale = Vector3.one * (1f + 0.05f * Mathf.Sin(Time.unscaledTime * 5f)));
+            }, 0.35f + stars * 0.35f);
+            y += 190f;
+        }
 
-            p.Label(Loc.T("걸린 시간  ", "Time  ") + Clock(seconds), 60, Art.Ink, 430f);
-            string bestLine = newBest && prevBest > 0 ? Loc.T("새 기록!", "New record!") : Loc.T("최고 기록  ", "Best  ") + Clock(Progress.BestSeconds(def.number));
-            p.Label(bestLine, 44, newBest && prevBest > 0 ? Art.Red : Art.GreyDark, 500f);
+        string bonusNote = bonus > 0 ? Loc.T("  (+" + bonus + "초)", "  (+" + bonus + "s)") : "";
+        p.Label(Loc.T("걸린 시간  ", "Time  ") + Clock(seconds) + bonusNote, 60, Art.Ink, y + 30f);
+        string bestLine = newBest && prevBest > 0 ? Loc.T("새 기록!", "New record!") : Loc.T("최고 기록  ", "Best  ") + Clock(Progress.BestSeconds(def.number));
+        p.Label(bestLine, 44, newBest && prevBest > 0 ? Art.Red : Art.GreyDark, y + 100f);
+        y += 160f;
 
-            float y = 620f;
-            if (!last)
+        // 추가 시간 받고 다시 하기: 광고를 보면 N초를 미리 받고 이 판을 처음부터 다시 한다 → 광을 더 따기 쉽다.
+        if (canCharge)
+        {
+            int extra = BonusSeconds;
+            p.Button(Loc.T("+" + extra + "초 받고 다시 하기", "Retry with +" + extra + "s"), Art.IconVideo, Art.Blue, Art.BlueDark, y + 60f, () =>
             {
-                p.Button(Loc.T("다음 스테이지", "Next Stage"), Art.IconPlay, Art.Green, Art.GreenDark, y, () =>
+                if (!Ads.RewardedReady(Ads.Reward.TimeCharge))
                 {
-                    int next = def.number + 1;
-                    if (!Ads.TryShowInterstitial(def.number, () => App.I.Play(next))) App.I.Play(next);
-                }, 0f, 0f, 150f);
-                y += 190f;
-            }
-            float half = (900f - 140f - 30f) / 2f;
-            p.Button(Loc.T("다시", "Retry"), Art.IconRetry, Art.Red, Art.RedDark, y, () => App.I.Play(def.number), half, -(half + 30f) / 2f);
-            p.Button(Loc.T("목록", "Stages"), Art.IconGrid, Art.Wood, Art.WoodDark, y, () => App.I.ShowStages(def.number), half, (half + 30f) / 2f);
-        });
+                    ShowToast(Loc.T("광고를 불러오는 중이에요. 잠시 뒤 다시 눌러 주세요", "Loading an ad... please try again soon"));
+                    return;
+                }
+                Ads.ShowRewarded(Ads.Reward.TimeCharge, ok =>
+                {
+                    if (ok && this != null) App.I.Play(def.number, extra);
+                });
+            }, 0f, 0f, 120f);
+            y += 150f;
+        }
+
+        if (!last)
+        {
+            p.Button(Loc.T("다음 스테이지", "Next Stage"), Art.IconPlay, Art.Green, Art.GreenDark, y + 75f, () =>
+            {
+                int next = def.number + 1;
+                if (!Ads.TryShowInterstitial(def.number, () => App.I.Play(next))) App.I.Play(next);
+            }, 0f, 0f, 150f);
+            y += 190f;
+        }
+        float half = (900f - 140f - 30f) / 2f;
+        p.Button(Loc.T("다시", "Retry"), Art.IconRetry, Art.Red, Art.RedDark, y + 65f, () => App.I.Play(def.number), half, -(half + 30f) / 2f);
+        p.Button(Loc.T("목록", "Stages"), Art.IconGrid, Art.Wood, Art.WoodDark, y + 65f, () => App.I.ShowStages(def.number), half, (half + 30f) / 2f);
     }
 
     public static string Clock(int seconds) => (seconds / 60) + ":" + (seconds % 60).ToString("00");
@@ -1183,7 +1149,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
         foreach (var v in AllViews()) if (board.Free(v.Index)) { OnCardPressed(v); return; }
     }
 
-    public void DevHint() => ShowHint();
     public void DevTimeUp() => elapsed = Limit;
     public void DevPause() => OpenPause();
     public void DevWin()

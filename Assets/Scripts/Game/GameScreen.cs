@@ -56,7 +56,12 @@ public class GameScreen : MonoBehaviour, IBackHandler
     RectTransform[] starMarks;
     RectTransform timerBar;
     RectTransform[] traySlots;
-    Image[] trayCards;
+    RectTransform[] trayFans;
+    Image[][] trayFanCards;
+    // 폭탄 칸마다 뭉친 세 장의 패 번호 (bombs와 같은 순서)
+    readonly List<int[]> bombCards = new List<int[]>();
+    static readonly float[] FanAngles = { 16f, 0f, -16f };
+    static readonly float[] FanOffsets = { -16f, 0f, 16f };
     Text hintCount;
     Image hintAd;
     RectTransform hintButton;
@@ -189,20 +194,34 @@ public class GameScreen : MonoBehaviour, IBackHandler
         Ui.Place(trayLabel.rectTransform, 0.5f, 1f, new Vector2(400f, 44f), new Vector2(0f, -6f));
         Ui.Outline(trayLabel, Art.WoodDark, 2f);
         traySlots = new RectTransform[MaxBombs];
-        trayCards = new Image[MaxBombs];
+        trayFans = new RectTransform[MaxBombs];
+        trayFanCards = new Image[MaxBombs][];
         for (int i = 0; i < MaxBombs; i++)
         {
             var slot = Ui.Rect("Slot" + i, tray);
             Ui.Place(slot, 0.5f, 0.5f, new Vector2(88f, 143f), new Vector2((i - 1) * 165f, -12f));
             var empty = Ui.Image(slot, Art.RoundSmall, new Color(1f, 1f, 1f, 0.12f), "Empty");
             Ui.Stretch(empty.rectTransform);
-            var card = Ui.Image(slot, null, Color.white, "Card");
-            Ui.Stretch(card.rectTransform);
-            var icon = Ui.Image(card.rectTransform, Art.IconBomb, Color.white, "Bomb");
-            Ui.Place(icon.rectTransform, 0.5f, 0.5f, new Vector2(70f, 70f), new Vector2(0f, -10f));
-            card.gameObject.SetActive(false);
+            // 뭉친 세 장을 부채처럼 살짝 벌려 보여 준다 (아래쪽 가운데를 축으로).
+            var fan = Ui.Rect("Fan", slot);
+            Ui.Stretch(fan);
+            trayFanCards[i] = new Image[3];
+            for (int k = 0; k < 3; k++)
+            {
+                var c = Ui.Image(fan, null, Color.white, "Card" + k);
+                var crt = c.rectTransform;
+                crt.anchorMin = crt.anchorMax = new Vector2(0.5f, 0f);
+                crt.pivot = new Vector2(0.5f, 0.08f);
+                crt.sizeDelta = new Vector2(74f, 74f * Art.CardAspect);
+                crt.anchoredPosition = new Vector2(FanOffsets[k], 18f);
+                crt.localEulerAngles = new Vector3(0f, 0f, FanAngles[k]);
+                trayFanCards[i][k] = c;
+            }
+            var icon = Ui.Image(fan, Art.IconBomb, Color.white, "Bomb");
+            Ui.Place(icon.rectTransform, 0.5f, 0f, new Vector2(60f, 60f), new Vector2(0f, 22f));
+            fan.gameObject.SetActive(false);
             traySlots[i] = slot;
-            trayCards[i] = card;
+            trayFans[i] = fan;
             int index = i;
             var btn = slot.gameObject.AddComponent<Button>();
             btn.transition = Selectable.Transition.None;
@@ -498,6 +517,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         var slides = Gravity.Apply(board, gravity);
 
         bombs.Add(p.month);
+        bombCards.Add(new[] { p.b != null ? p.b.Value : third.Value, p.a != null ? p.a.Value : third.Value, third.Value });
         int slot = Mathf.Min(bombs.Count - 1, MaxBombs - 1);
         Vector2 from = third.Rt.anchoredPosition;
         Vector2 to = p.b != null ? p.b.Rt.anchoredPosition : from;
@@ -539,9 +559,20 @@ public class GameScreen : MonoBehaviour, IBackHandler
             Anim.Delay(this, 0.85f, () =>
             {
                 RefreshTray();
-                var card = trayCards[slot];
-                Anim.Run(card, 0.45f, t => card.rectTransform.localScale = Vector3.one * Anim.OutElastic(t));
-                Fx.Flash(card.rectTransform.position, 300f, new Color(1f, 0.6f, 0.2f, 0.9f), 0.5f);
+                var fan = trayFans[slot];
+                var cards = trayFanCards[slot];
+                // 포개진 채 들어와서 부채처럼 촤르륵 펼쳐진다.
+                Anim.Run(fan, 0.5f, t =>
+                {
+                    fan.localScale = Vector3.one * Anim.OutElastic(Mathf.Min(1f, t * 1.4f));
+                    float open = Anim.OutBack(Mathf.Clamp01((t - 0.2f) / 0.8f));
+                    for (int k = 0; k < 3; k++)
+                    {
+                        cards[k].rectTransform.localEulerAngles = new Vector3(0f, 0f, FanAngles[k] * open);
+                        cards[k].rectTransform.anchoredPosition = new Vector2(FanOffsets[k] * open, 18f);
+                    }
+                });
+                Fx.Flash(fan.position, 300f, new Color(1f, 0.6f, 0.2f, 0.9f), 0.5f);
             });
         });
 
@@ -644,8 +675,15 @@ public class GameScreen : MonoBehaviour, IBackHandler
         for (int i = 0; i < MaxBombs; i++)
         {
             bool has = i < bombs.Count;
-            trayCards[i].gameObject.SetActive(has);
-            if (has) trayCards[i].sprite = Art.Card(Art.MonthHero(bombs[i]));
+            trayFans[i].gameObject.SetActive(has);
+            if (!has) continue;
+            for (int k = 0; k < 3; k++)
+            {
+                var c = trayFanCards[i][k];
+                c.sprite = Art.Card(bombCards[i][k]);
+                c.rectTransform.localEulerAngles = new Vector3(0f, 0f, FanAngles[k]);
+                c.rectTransform.anchoredPosition = new Vector2(FanOffsets[k], 18f);
+            }
         }
     }
 
@@ -673,8 +711,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
         {
             // 폭탄 칸의 뭉치가 눌린 패 쪽으로 날아간다.
             var fromSlot = traySlots[slotIndex];
-            var flyer = Ui.Image(Fx.Layer != null ? Fx.Layer : (RectTransform)transform, Art.Card(Art.MonthHero(month)), Color.white, "BombFly");
-            flyer.rectTransform.sizeDelta = fromSlot.sizeDelta;
+            var flyer = Ui.Image(Fx.Layer != null ? Fx.Layer : (RectTransform)transform, Art.Card(bombCards[slotIndex][2]), Color.white, "BombFly");
+            flyer.rectTransform.sizeDelta = new Vector2(80f, 80f * Art.CardAspect);
             flyer.rectTransform.position = fromSlot.position;
             Vector3 start = fromSlot.position, end = views[origin.X, origin.Y].Rt.position;
             Anim.Run(flyer, 0.18f, t =>
@@ -683,7 +721,11 @@ public class GameScreen : MonoBehaviour, IBackHandler
                 flyer.rectTransform.localEulerAngles = new Vector3(0f, 0f, t * 360f);
             }, () => Destroy(flyer.gameObject));
         }
-        bombs.Remove(month);
+        if (slotIndex >= 0)
+        {
+            bombs.RemoveAt(slotIndex);
+            bombCards.RemoveAt(slotIndex);
+        }
         RefreshTray();
 
         var cells = BlastCells(origin);

@@ -25,8 +25,6 @@ namespace HwatuSolitaire.Core
         public readonly Tile[] Tiles;
         /// <summary>i 위로 겹쳐 덮는 더 높은 층의 자리들.</summary>
         public readonly int[][] Above;
-        /// <summary>같은 층에서 i의 왼쪽/오른쪽에 바로 붙어 있는 자리들 (세로로 조금이라도 겹치면).</summary>
-        public readonly int[][] Left, Right;
         public readonly int MinX, MinY, MaxX, MaxY, MaxZ;
 
         public Layout(IList<Tile> tiles)
@@ -35,9 +33,7 @@ namespace HwatuSolitaire.Core
             Tiles = new Tile[n];
             tiles.CopyTo(Tiles, 0);
             var above = new List<int>[n];
-            var left = new List<int>[n];
-            var right = new List<int>[n];
-            for (int i = 0; i < n; i++) { above[i] = new List<int>(); left[i] = new List<int>(); right[i] = new List<int>(); }
+            for (int i = 0; i < n; i++) above[i] = new List<int>();
             MinX = MinY = int.MaxValue;
             MaxX = MaxY = MaxZ = int.MinValue;
             for (int i = 0; i < n; i++)
@@ -51,17 +47,10 @@ namespace HwatuSolitaire.Core
                     if (i == j) continue;
                     var b = Tiles[j];
                     if (b.Z > a.Z && a.Overlaps(b)) above[i].Add(j);
-                    if (b.Z == a.Z && Math.Abs(b.Y - a.Y) < 2)
-                    {
-                        if (b.X == a.X - 2) left[i].Add(j);
-                        else if (b.X == a.X + 2) right[i].Add(j);
-                    }
                 }
             }
             Above = new int[n][];
-            Left = new int[n][];
-            Right = new int[n][];
-            for (int i = 0; i < n; i++) { Above[i] = above[i].ToArray(); Left[i] = left[i].ToArray(); Right[i] = right[i].ToArray(); }
+            for (int i = 0; i < n; i++) Above[i] = above[i].ToArray();
         }
 
         public int Count => Tiles.Length;
@@ -83,11 +72,11 @@ namespace HwatuSolitaire.Core
     }
 
     /// <summary>
-    /// 화투 솔리테어(상하이 방식) 판. 자리마다 화투패 번호(0~47) 또는 Empty(지워짐).
+    /// 화투 솔리테어(타일 매치 방식) 판. 자리마다 화투패 번호(0~47) 또는 Empty(지워짐).
     /// 화투패 번호 = 월(0~11) * 4 + 그 달의 몇 번째 패(0~3). 같은 월끼리 짝이 된다 (판이 크면 두 벌).
     ///
-    /// 열린 패(Free): 위를 덮은 패가 없고, 왼쪽이나 오른쪽 중 한쪽이 비어 있는 패. 열린 패 두 장이 같은 달이면 짝으로 지울 수 있다.
-    /// 드러난 패(Exposed): 위를 덮은 패만 없는 패 (옆은 막혀 있어도 됨). 폭탄은 드러난 패에도 쓸 수 있다.
+    /// 열린 패(Free): 위를 덮은 패가 없는 패 (옆은 상관없다 — 정통 상하이의 "양옆 중 한쪽이 비어야" 규칙은 쓰지 않는다).
+    /// 열린 패 두 장이 같은 달이면 짝으로 지울 수 있다.
     /// </summary>
     public sealed class Board
     {
@@ -124,17 +113,7 @@ namespace HwatuSolitaire.Core
             return true;
         }
 
-        public bool Free(int i)
-        {
-            if (!Exposed(i)) return false;
-            return SideOpen(Layout.Left[i]) || SideOpen(Layout.Right[i]);
-        }
-
-        bool SideOpen(int[] side)
-        {
-            foreach (int j in side) if (values[j] >= 0) return false;
-            return true;
-        }
+        public bool Free(int i) => Exposed(i);
 
         public int CardCount
         {

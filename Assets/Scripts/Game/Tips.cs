@@ -32,8 +32,8 @@ public static class Tips
         Pair(p, 0, 3, "=", 300f);
         p.Label(Loc.T("같은 달(같은 꽃) 화투끼리 짝이에요", "Cards of the same month (flower) make a pair"), 46, Art.Ink, 470f, 80f);
         p.Label(Loc.T(
-            "<color=#C8102E>열린 패</color>만 고를 수 있어요:\n위에 다른 패가 덮여 있지 않고,\n왼쪽이나 오른쪽 중 한쪽이 비어 있는 패.\n막힌 패는 조금 어둡게 보여요.",
-            "Only <color=#C8102E>free cards</color> can be picked:\nnothing on top, and an open left or right side.\nBlocked cards look a little darker."),
+            "패가 층층이 쌓여 있어요.\n<color=#C8102E>위에 덮인 패가 없는 패</color>만 고를 수 있어요.\n덮인 패는 조금 어둡게 보여요.\n위 패를 치우면 아래 패가 열려요.",
+            "Cards are stacked in layers.\nOnly cards with <color=#C8102E>nothing on top</color> can be picked.\nCovered cards look a little darker.\nClear the top ones to open the cards below."),
             40, Art.GreyDark, 680f, 300f);
         p.Label(Loc.T("빨리 깰수록 광을 더 받아요. 3광에 도전!", "Clear fast to collect up to 3 Gwang (光)!"), 44, Art.Red, 900f, 80f);
         p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 1050f, () => p.Close(), 0f, 0f, 140f);

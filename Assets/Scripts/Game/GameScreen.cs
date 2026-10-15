@@ -6,11 +6,11 @@ using UnityEngine.UI;
 /// <summary>
 /// 게임 화면. 위: 일시정지·스테이지 이름·남은 시간과 광 기준. 가운데: 판. 아래: 쌌다(폭탄) 칸·힌트.
 ///
-/// 규칙(화투 솔리테어, 상하이 방식): 패가 여러 층으로 쌓여 있다. 위가 덮이지 않고 왼쪽이나 오른쪽이 비어 있는 "열린 패"
-/// 두 장이 같은 달이면 "짝!" 하고 지운다. 막힌 패는 살짝 어둡게 보인다.
+/// 규칙(화투 솔리테어, 타일 매치 방식): 패가 여러 층으로 쌓여 있다. 위가 덮이지 않은 "열린 패" 두 장이 같은 달이면
+/// "짝!" 하고 지운다 (옆은 상관없다). 덮인 패는 살짝 어둡게 보인다.
 /// 쌌다: 짝을 맞추면 두 장이 그 자리에 잠깐(stackWindow초, 고리 시간) 포개져 있다. 그 사이에 같은 달 열린 패를 하나 더 누르면
 /// 고스톱처럼 세 장이 뭉쳐 "쌌다!" → 그 뭉치가 아래 폭탄 칸으로 간다 (최대 3뭉치).
-/// 폭탄: 폭탄 칸에 있는 달의 패를 판에서 하나 누르면(위만 안 덮여 있으면 옆이 막혀도 된다) 그 패와 둘레의 짝 몇 쌍이 한꺼번에 펑.
+/// 폭탄: 폭탄 칸에 있는 달의 열린 패를 판에서 하나 누르면 그 패와 둘레의 짝 몇 쌍이 한꺼번에 펑.
 /// 짝 단위로 지우므로 달마다 장수는 짝수로 돌아온다. 막히면(폭탄도 못 쓰면) 자동으로 섞는데, 섞은 판도 늘 풀린다(Rules.Shuffle).
 /// 시간 안에 다 지우면 클리어(걸린 시간으로 광), 시간이 다 되면 실패 → 광고 보고 시간 더 받아 이어하기.
 /// </summary>
@@ -318,7 +318,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         foreach (var v in views) if (v != null) yield return v;
     }
 
-    /// <summary>열린 패는 밝게, 막힌 패는 살짝 어둡게.</summary>
+    /// <summary>열린 패는 밝게, 덮인 패는 살짝 어둡게.</summary>
     void RefreshFree(bool instant = false)
     {
         foreach (var v in AllViews()) v.SetBlocked(!board.Free(v.Index), instant);
@@ -332,8 +332,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
         if (views[i] != view) return;
         int month = Board.Month(view.Value);
 
-        // 폭탄 달: 위만 덮여 있지 않으면 옆이 막혀 있어도 터뜨릴 수 있다.
-        if (bombs.Contains(month) && board.Exposed(i))
+        // 폭탄 달의 열린 패를 누르면 터진다.
+        if (bombs.Contains(month) && board.Free(i))
         {
             Detonate(i, month);
             return;
@@ -343,9 +343,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         {
             Sfx.Deny();
             view.Wiggle();
-            ShowToast(board.Exposed(i)
-                ? Loc.T("양옆이 막힌 패예요", "Blocked on both sides")
-                : Loc.T("위에 다른 패가 덮고 있어요", "Covered by another card"));
+            ShowToast(Loc.T("위에 다른 패가 덮고 있어요", "Covered by another card"));
             return;
         }
 
@@ -629,11 +627,39 @@ public class GameScreen : MonoBehaviour, IBackHandler
         ClearHint();
         if (selected != null) { selected.Selected = false; selected = null; }
         ShowToast(Loc.T("짝이 없어서 패를 섞어요!", "No pairs left - shuffling!"));
-        Rules.Shuffle(board, rng);
+        var move = Rules.Shuffle(board, rng);
         Sfx.Shuffle();
+
+        // 자리를 옮긴 패는 새 자리로 날아가고, 모든 패가 뒤집히며 새 그림이 된다.
+        var old = views;
+        views = new CardView[old.Length];
         int n = 0;
-        for (int i = 0; i < views.Length; i++)
-            if (views[i] != null) views[i].FlipTo(board[i], n++ * 0.015f);
+        for (int i = 0; i < old.Length; i++)
+        {
+            var v = old[i];
+            if (v == null || move[i] < 0) continue;
+            int to = move[i];
+            views[to] = v;
+            v.Index = to;
+            if (to != i)
+            {
+                var rt = v.Rt;
+                Vector2 from = rt.anchoredPosition, target = TilePos(to);
+                Anim.Run(rt, 0.35f, t => rt.anchoredPosition = Vector2.Lerp(from, target, Anim.InOutCubic(t)), null, n * 0.02f);
+            }
+            v.FlipTo(board[to], n++ * 0.015f);
+        }
+        // 옮긴 뒤 그리는 순서(아래층 먼저)를 다시 맞춘다.
+        var order = new List<int>();
+        for (int i = 0; i < views.Length; i++) if (views[i] != null) order.Add(i);
+        order.Sort((a, b) =>
+        {
+            Tile ta = def.Layout.Tiles[a], tb = def.Layout.Tiles[b];
+            if (ta.Z != tb.Z) return ta.Z.CompareTo(tb.Z);
+            if (ta.Y != tb.Y) return ta.Y.CompareTo(tb.Y);
+            return ta.X.CompareTo(tb.X);
+        });
+        foreach (int i in order) views[i].Rt.SetAsLastSibling();
         RefreshBombMarks();
         RefreshFree();
     }

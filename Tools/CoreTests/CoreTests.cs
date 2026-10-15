@@ -12,20 +12,18 @@ public class FreeRuleTests
     }
 
     [Fact]
-    public void OnlyRowEndsAreFree()
+    public void SideNeighboursDoNotBlock()
     {
+        // 타일 매치 방식: 옆에 패가 붙어 있어도 위만 비어 있으면 열린 패
         var b = Row(0, 4, 8, 1);
-        Assert.True(b.Free(0));
-        Assert.False(b.Free(1));
-        Assert.False(b.Free(2));
-        Assert.True(b.Free(3));
-        // 양 끝이 같은 달(1월)이라 짝
+        for (int i = 0; i < 4; i++) Assert.True(b.Free(i));
         Assert.True(Rules.CanMatch(b, 0, 3));
+        Assert.True(Rules.CanMatch(b, 1, 1) == false);
         Assert.False(Rules.CanMatch(b, 0, 1));
     }
 
     [Fact]
-    public void CoveredTileIsNotFreeEvenIfSidesOpen()
+    public void CoveredTileIsNotFree()
     {
         // 아래 한 장, 반 칸 어긋나 위에 한 장
         var layout = new Layout(new[] { new Tile(0, 0, 0), new Tile(1, 1, 1) });
@@ -35,17 +33,6 @@ public class FreeRuleTests
         Assert.True(b.Free(1));
         b[1] = Board.Empty;
         Assert.True(b.Free(0));
-    }
-
-    [Fact]
-    public void SideNeighbourMustOverlapVertically()
-    {
-        // 오른쪽 옆 패가 세로로 반 칸 어긋나 있어도 막는다, 한 칸 넘게 어긋나면 안 막는다.
-        var layout = new Layout(new[] { new Tile(0, 0, 0), new Tile(2, 1, 0), new Tile(-2, 2, 0) });
-        var b = new Board(layout, new[] { 0, 4, 8 });
-        Assert.Single(layout.Right[0]);
-        Assert.Empty(layout.Left[0]);
-        Assert.True(b.Free(0)); // 왼쪽이 비어 있다
     }
 }
 
@@ -89,6 +76,21 @@ public class DealTests
         after.Sort();
         Assert.Equal(before, after);
         Assert.NotNull(Solver.Solve(board, 3, 200));
+    }
+}
+
+public class StuckShuffleTests
+{
+    [Fact]
+    public void ShuffleSpreadsTwoStackedCardsOntoFloor()
+    {
+        // 두 장이 바로 포개져 남으면 위 한 장만 열려 짝을 지을 수 없다 → 바닥 자리로 펼친다.
+        var layout = new Layout(new[] { new Tile(0, 0, 0), new Tile(0, 0, 1), new Tile(4, 0, 0) });
+        var b = new Board(layout, new[] { 0, 1, Board.Empty });
+        Assert.False(Rules.HasMove(b));
+        var move = Rules.Shuffle(b, new Rng(3));
+        Assert.True(Rules.HasMove(b));
+        Assert.Equal(-1, move[2]);
     }
 }
 

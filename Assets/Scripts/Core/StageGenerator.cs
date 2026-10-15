@@ -10,7 +10,7 @@ namespace HwatuSolitaire.Core
     /// 12장(챕터) × 25스테이지. 챕터마다 화투의 달(1월 송학 ~ 12월 비)을 테마로 한다.
     /// 난이도를 올리는 손잡이:
     ///  ① 패 수 12장 → 100장 남짓 (챕터 안에서 늘고, 다음 챕터는 조금 쉬운 데서 다시 시작하는 톱니 모양)
-    ///  ② 층 수 (위에 덮인 패가 많을수록 열린 패가 적다): 1~2층 → 5층
+    ///  ② 층 수 (위에 덮인 패가 많을수록 열린 패가 적다): 첫 판부터 2~3층 → 6층
     ///  ③ 판 모양 (Layouts): 피라미드·계단 → 마름모 → 쌍봉 → 십자 → 테두리 → 탑
     ///  ④ 쓰는 달 수 (적으면 짝 찾기가 쉽다)
     ///  ⑤ "쌌다" 시간(짝 뒤 셋째 패를 얹을 수 있는 시간)이 2.0초 → 1.2초로 짧아진다
@@ -57,8 +57,9 @@ namespace HwatuSolitaire.Core
             string shape = preferred;
 
             // ② 층 수 범위
-            int minL = chapter >= 4 ? 2 : 1;
-            int maxL = Math.Min(5, 2 + chapter / 2);
+            // 위만 안 덮이면 고를 수 있는 규칙이라, 첫 판부터 층층이 쌓아야 한다. 뒤로 갈수록 더 높이.
+            int minL = Math.Min(4, 2 + chapter / 4);
+            int maxL = Math.Min(6, 3 + chapter / 2);
 
             // 목표 장수에 가장 가까운 (가로, 세로, 층) 고르기
             List<Tile> best = null;
@@ -79,7 +80,9 @@ namespace HwatuSolitaire.Core
                         int maxZ = 0;
                         foreach (var t in tiles) maxZ = Math.Max(maxZ, t.Z);
                         if (maxZ + 1 < minL) continue;
-                        int count = tiles.Count - tiles.Count % 2;
+                        // 처음부터 열린(위가 빈) 패가 넉넉해야 짝을 지을 수 있다 (꼭대기 한 장만 열린 피라미드 등은 뺀다).
+                        if (TrimToEven(tiles) == null || OpenCount(tiles) < 4) continue;
+                        int count = tiles.Count;
                         // 장수가 가까운 것 + 층이 그 챕터에 어울리는 것, 화면 모양에 맞는 비율을 조금 더 좋아한다.
                         float score = Math.Abs(count - target) + Math.Abs((maxZ + 1) - (minL + (maxL - minL) * p)) * 2f
                                       + Math.Abs(fh / Math.Max(1f, fw) - 0.85f) * 3f + (float)rng.NextDouble() * 0.5f + shapeBias;
@@ -94,14 +97,6 @@ namespace HwatuSolitaire.Core
             }
             if (best == null) throw new InvalidOperationException("no layout for stage " + number);
 
-            // 홀수면 맨 위층 패 하나를 뺀다.
-            if (best.Count % 2 == 1)
-            {
-                int top = 0;
-                for (int i = 1; i < best.Count; i++) if (best[i].Z >= best[top].Z) top = i;
-                best.RemoveAt(top);
-            }
-
             var plan = new Plan { Number = number, Chapter = chapter, Shape = shape, Tiles = best, Layers = bestLayers };
 
             // ④ 쓰는 달 수: 처음엔 한 달에 4장씩 꽉 채워 적은 달로, 뒤로 갈수록 12달을 다 쓰고 달마다 장수를 들쭉날쭉하게.
@@ -115,6 +110,25 @@ namespace HwatuSolitaire.Core
             float tt = (number - 1) / (float)(StageCount - 1);
             plan.StackWindow = (float)Math.Round(2.0 - tt * 0.8, 2);
             return plan;
+        }
+
+        /// <summary>홀수면 맨 위층 패 하나를 빼서 짝수로 만든다 (바꾼 목록을 돌려준다).</summary>
+        static List<Tile> TrimToEven(List<Tile> tiles)
+        {
+            if (tiles.Count % 2 == 0) return tiles;
+            int top = 0;
+            for (int i = 1; i < tiles.Count; i++) if (tiles[i].Z >= tiles[top].Z) top = i;
+            tiles.RemoveAt(top);
+            return tiles;
+        }
+
+        /// <summary>위가 덮이지 않은 자리 수.</summary>
+        static int OpenCount(List<Tile> tiles)
+        {
+            int n = 0;
+            foreach (var a in tiles)
+                if (!tiles.Exists(b => b.Z > a.Z && a.Overlaps(b))) n++;
+            return n;
         }
 
         /// <summary>무작위로 끝까지 두어 보는 횟수. 이 가운데 몇 번이나 다 지워지는지로 "막히기 쉬운 판"을 걸러 낸다.</summary>

@@ -77,41 +77,87 @@ namespace HwatuSolitaire.Core
             rng.Shuffle(pairs);
 
             var open = new List<int>();
+            int left = slots.Count;
             foreach (var (c1, c2) in pairs)
             {
                 open.Clear();
                 for (int i = 0; i < layout.Count; i++) if (board.Free(i)) open.Add(i);
                 if (open.Count < 2) return null;
-                int a = open[rng.Next(open.Count)];
-                open.Remove(a);
-                // 바로 옆 자리끼리만 짝이 되면 너무 쉬워서, 열린 자리 가운데 아무 데나 고른다.
-                int b = open[rng.Next(open.Count)];
+                // 열린 자리 가운데 아무 데나 두 자리를 고르되, 고른 뒤 남은 판에 열린 자리가 두 개 이상 남는 쪽으로
+                // (한 장이 다른 한 장을 바로 덮은 채 둘만 남으면 더 이상 짝을 넣을 수 없다). 몇 번 해 보고 안 되면 그냥 간다.
+                int a = -1, b = -1;
+                for (int tries = 0; tries < 12; tries++)
+                {
+                    a = open[rng.Next(open.Count)];
+                    do b = open[rng.Next(open.Count)]; while (b == a);
+                    if (left == 2) break;
+                    board[a] = Board.Empty;
+                    board[b] = Board.Empty;
+                    int nowOpen = 0;
+                    for (int i = 0; i < layout.Count && nowOpen < 2; i++) if (board.Free(i)) nowOpen++;
+                    board[a] = 0;
+                    board[b] = 0;
+                    if (nowOpen >= 2) break;
+                }
                 result[a] = c1;
                 result[b] = c2;
                 board[a] = Board.Empty;
                 board[b] = Board.Empty;
+                left -= 2;
             }
             return result;
         }
 
         /// <summary>
-        /// 남은 패를 남은 자리 안에서 다시 나눈다 (막혔을 때 자동 섞기). Deal과 같은 방법이라 섞은 판도 항상 끝까지 풀린다.
+        /// 막혔을 때 자동 섞기. 남은 패를 남은 자리 안에서 Deal과 같은 방법으로 다시 나눠, 섞은 판도 끝까지 풀리게 한다.
+        /// 남은 패가 위아래로 포개진 채 몇 장 안 남으면(예: 두 장이 서로 덮고 있으면) 그 자리로는 풀 수가 없어서,
+        /// 그때는 남은 패를 서로 겹치지 않는 맨 아래층 자리로 옮겨 펼친다.
+        /// 돌려주는 값: 자리 옮김표 move[원래 자리] = 새 자리 (안 옮긴 패는 자기 자리, 패가 없던 자리는 -1).
         /// </summary>
-        public static void Shuffle(Board board, Rng rng)
+        public static int[] Shuffle(Board board, Rng rng)
         {
             var slots = board.PresentTiles();
             var cards = new List<int>();
             foreach (int s in slots) cards.Add(board[s]);
+            var move = new int[board.Count];
+            for (int i = 0; i < move.Length; i++) move[i] = board.Present(i) ? i : -1;
+
             for (int t = 0; t < 60; t++)
             {
                 var dealt = Deal(board.Layout, slots, cards, rng);
                 if (dealt == null) continue;
                 foreach (int s in slots) board[s] = dealt[s];
-                return;
+                return move;
             }
-            // 아주 드물게 실패하면 그냥 뒤섞는다.
+
+            // 맨 아래층(겹치지 않는 자리) 가운데 판 가운데에 가까운 자리부터 골라 펼친다.
+            var layout = board.Layout;
+            var floor = new List<int>();
+            for (int i = 0; i < layout.Count; i++) if (layout.Tiles[i].Z == 0) floor.Add(i);
+            float cx = (layout.MinX + layout.MaxX) / 2f - 1f, cy = (layout.MinY + layout.MaxY) / 2f - 1f;
+            floor.Sort((p, q) =>
+            {
+                float dp = (layout.Tiles[p].X - cx) * (layout.Tiles[p].X - cx) + (layout.Tiles[p].Y - cy) * (layout.Tiles[p].Y - cy);
+                float dq = (layout.Tiles[q].X - cx) * (layout.Tiles[q].X - cx) + (layout.Tiles[q].Y - cy) * (layout.Tiles[q].Y - cy);
+                return dp.CompareTo(dq);
+            });
+            if (floor.Count >= slots.Count)
+            {
+                var target = floor.GetRange(0, slots.Count);
+                rng.Shuffle(cards);
+                for (int i = 0; i < move.Length; i++) { board[i] = Board.Empty; move[i] = -1; }
+                for (int i = 0; i < slots.Count; i++)
+                {
+                    move[slots[i]] = target[i];
+                    board[target[i]] = cards[i];
+                }
+                return move;
+            }
+
+            // 그래도 안 되면(남은 패가 바닥 자리보다 많을 때) 그냥 뒤섞는다.
             rng.Shuffle(cards);
             for (int i = 0; i < slots.Count; i++) board[slots[i]] = cards[i];
+            return move;
         }
     }
 }

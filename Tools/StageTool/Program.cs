@@ -23,6 +23,7 @@ static class Program
         string cmd = args.Length > 0 ? args[0] : "build";
         if (cmd == "build") return Build(root);
         if (cmd == "validate") return Validate(root);
+        if (cmd == "plan") return ShowPlan(int.Parse(args[1]));
         Console.Error.WriteLine("usage: build | validate");
         return 1;
     }
@@ -70,6 +71,16 @@ static class Program
         }
         File.WriteAllText(Path.Combine(root, ReportPath), report.ToString(), new UTF8Encoding(false));
         Console.WriteLine("wrote " + ReportPath);
+        return 0;
+    }
+
+    /// <summary>스테이지 하나의 판 모양을 층별로 찍어 본다 (디버깅용).</summary>
+    static int ShowPlan(int number)
+    {
+        var plan = StageGenerator.MakePlan(number);
+        Console.WriteLine("stage " + number + " shape=" + plan.Shape + " tiles=" + plan.Tiles.Count + " layers=" + plan.Layers + " months=" + plan.MonthCount);
+        foreach (var g in plan.Tiles.GroupBy(t => t.Z))
+            Console.WriteLine(" z" + g.Key + ": " + string.Join(" ", g.Select(t => t.X + "," + t.Y)));
         return 0;
     }
 

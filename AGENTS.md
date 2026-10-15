@@ -11,13 +11,15 @@
 - 제한 시간 안에 다 지우면 클리어. 평가는 별 대신 **광(光)** 표시: `star3`초 안 3광, `star2`초 안 2광, 그 밖 1광. 부활해서 깨면 1광. (광 그림: `Tools/Cards/gwang.svg` → `Resources/Cards/gwang.png`)
 - 시간 초과 → 보상형 광고로 이어하기(한 판 2번). 둘 곳이 없으면(폭탄도 없으면) 자동으로 섞는다.
 - 중력(3장부터): 짝을 지우면 남은 패가 정해진 방향으로 쏠린다. 엎어진 패(5장부터): 없앨 수 없고 길을 막는다.
+- 2층 판(4장부터 장마다 5판, 45판): 안쪽 칸에 엎어진 패가 한 장 더 깔려 있어(`StageDef.under`, `Board.Take`) 위 패를 지우면 뒤집혀 올라온다. 아래 패는 왼쪽 위로 뒷면이 살짝 비친다. 중력과는 함께 내지 않는다.
+- 이름: 한국어 "짝! 화투 사천성", 영어 "Hwatu Connect" (영어권은 Shisen-Sho보다 Onet/Tile Connect류 이름이 익숙).
 
 ## 구조
 - `Assets/Scripts/Core` (asmdef `HwatuSolitaire.Core`, UnityEngine 참조 금지): 판, 경로(`PathFinder`), 중력, 규칙·섞기(`Rules`), 풀이기(`Solver`), 스테이지 생성(`StageGenerator`), 별 시간(`StarTimer`).
 - `Assets/Scripts/Game`: 화면은 모두 코드로 조립 (씬에는 `App` 하나). `App` → `TitleScreen` / `StageSelectScreen` / `GameScreen`, 팝업 `Popup`, `Tips`(규칙 안내·설정·크레딧).
   `Art`(화투 아틀라스 + SDF 아이콘), `Ui`, `Anim`, `Fx`, `Sfx`(코드 합성 소리), `Ads`, `Loc`, `Settings`, `Progress`(PlayerPrefs).
 - `Assets/Resources/Stages/stages.json`: 300스테이지 (도구로만 만든다). `Assets/Resources/AdConfig.json`: 광고 ID (docs/ADS.md).
-- `Assets/Resources/Cards/hwatu_atlas.png`: 화투 48장 + 뒷면 (Tools/Cards/README.md, CC BY-SA 4.0 — 크레딧 표시 필수).
+- `Assets/Resources/Cards/hwatu_atlas.png`: 화투 48장 + 뒷면, 칸 318x516(투명 여백 4px — 기울이거나 줄여도 가장자리가 깨지지 않게) (Tools/Cards/README.md, CC BY-SA 4.0 — 크레딧 표시 필수).
 
 ## 명령
 ```bash

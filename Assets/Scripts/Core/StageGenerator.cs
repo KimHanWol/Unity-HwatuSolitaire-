@@ -15,6 +15,7 @@ namespace HwatuSolitaire.Core
     ///  ④ 중력(3장부터): 패를 지우면 남은 패가 한쪽으로 쏠린다
     ///  ⑤ 막힌 칸(5장부터): 지울 수 없는 뒤집힌 패가 길을 막는다
     ///  ⑥ "쌌다" 시간(짝 뒤 셋째 패를 얹을 수 있는 시간)이 2.0초 → 1.2초로 짧아진다
+    ///  ⑦ 2층 판(4장부터, 장마다 5판): 안쪽 칸에 엎어진 패가 한 장 더 깔려 있어 위 패를 지우면 드러난다. 중력·모양 구멍과는 함께 내지 않는다.
     /// </summary>
     public static class StageGenerator
     {
@@ -44,6 +45,7 @@ namespace HwatuSolitaire.Core
             public GravityMode Gravity;
             public bool[] Hole;      // true면 처음부터 빈칸
             public bool[] Blocked;   // true면 막힌 칸
+            public bool[] Layered;   // true면 아래층에 패가 한 장 더
             public int MonthCount;
             public float StackWindow;
             public string Shape = "rect";
@@ -73,9 +75,11 @@ namespace HwatuSolitaire.Core
             int cellCount = plan.Width * plan.Height;
             plan.Hole = new bool[cellCount];
             plan.Blocked = new bool[cellCount];
+            plan.Layered = new bool[cellCount];
+            bool layered = chapter >= 3 && k % 5 == 2;
 
             // ④ 중력
-            plan.Gravity = PickGravity(chapter, k, rng);
+            plan.Gravity = layered ? GravityMode.None : PickGravity(chapter, k, rng);
 
             // ⑤ 막힌 칸: 좌우 대칭 한 쌍씩 (패 수가 짝수로 남게)
             if (chapter >= 4 && plan.Width >= 6 && k % 4 != 0)
@@ -85,11 +89,18 @@ namespace HwatuSolitaire.Core
             }
 
             // ③ 모양 구멍: 중력이 없는 판에만 (중력이 있으면 패가 구멍을 메워 버린다)
-            if (chapter >= 1 && plan.Gravity == GravityMode.None && k % 3 != 0)
+            if (!layered && chapter >= 1 && plan.Gravity == GravityMode.None && k % 3 != 0)
                 ApplyShape(plan, rng);
 
+            // ⑦ 2층
+            if (layered) PlaceLayer(plan);
+
             int cards = 0;
-            for (int i = 0; i < cellCount; i++) if (!plan.Hole[i] && !plan.Blocked[i]) cards++;
+            for (int i = 0; i < cellCount; i++)
+            {
+                if (!plan.Hole[i] && !plan.Blocked[i]) cards++;
+                if (plan.Layered[i]) cards++;
+            }
             if (cards % 2 == 1) throw new InvalidOperationException("odd card count at stage " + number);
 
             // ② 쓰는 달 수: 처음엔 한 달에 4장씩 꽉 채워 적은 달로, 뒤로 갈수록 12달을 다 쓰고 달마다 장수를 들쭉날쭉하게.
@@ -102,6 +113,29 @@ namespace HwatuSolitaire.Core
             float t = (number - 1) / (float)(StageCount - 1);
             plan.StackWindow = (float)Math.Round(2.0 - t * 0.8, 2);
             return plan;
+        }
+
+        /// <summary>
+        /// 테두리를 뺀 안쪽 칸에 아래층을 깐다. 작은 판은 안쪽 전부, 큰 판은 바둑판 무늬로 (아래층이 위층의 절반을 넘지 않게).
+        /// 아래층 장수도 짝수로 맞춘다.
+        /// </summary>
+        static void PlaceLayer(Plan plan)
+        {
+            int w = plan.Width, h = plan.Height;
+            var inner = new List<int>();
+            for (int y = 1; y < h - 1; y++)
+                for (int x = 1; x < w - 1; x++)
+                {
+                    int i = y * w + x;
+                    if (!plan.Hole[i] && !plan.Blocked[i]) inner.Add(i);
+                }
+            bool checker = inner.Count > 12;
+            plan.Shape = checker ? "layer-checker" : "layer-inner";
+            var chosen = new List<int>();
+            foreach (int i in inner)
+                if (!checker || ((i % w) + (i / w)) % 2 == 0) chosen.Add(i);
+            if (chosen.Count % 2 == 1) chosen.RemoveAt(chosen.Count - 1);
+            foreach (int i in chosen) plan.Layered[i] = true;
         }
 
         static GravityMode PickGravity(int chapter, int k, Rng rng)
@@ -245,6 +279,7 @@ namespace HwatuSolitaire.Core
                 width = plan.Width,
                 height = plan.Height,
                 cells = best.ToArray(),
+                under = best.HasLayers ? best.UnderArray() : null,
                 gravity = (int)plan.Gravity,
                 stackWindow = plan.StackWindow,
             };
@@ -255,7 +290,10 @@ namespace HwatuSolitaire.Core
             var slots = new List<int>();
             for (int i = 0; i < plan.Width * plan.Height; i++)
                 if (!plan.Hole[i] && !plan.Blocked[i]) slots.Add(i);
-            int pairs = slots.Count / 2;
+            var lowerSlots = new List<int>();
+            for (int i = 0; i < plan.Width * plan.Height; i++)
+                if (plan.Layered != null && plan.Layered[i]) lowerSlots.Add(i);
+            int pairs = (slots.Count + lowerSlots.Count) / 2;
 
             // 쓸 달 고르기
             var monthPool = new List<int>();
@@ -292,7 +330,14 @@ namespace HwatuSolitaire.Core
             var values = new int[plan.Width * plan.Height];
             for (int i = 0; i < values.Length; i++) values[i] = plan.Blocked[i] ? Board.Block : Board.Empty;
             for (int i = 0; i < slots.Count; i++) values[slots[i]] = cards[i];
-            return new Board(plan.Width, plan.Height, values);
+            int[] lower = null;
+            if (lowerSlots.Count > 0)
+            {
+                lower = new int[values.Length];
+                for (int i = 0; i < lower.Length; i++) lower[i] = Board.Empty;
+                for (int i = 0; i < lowerSlots.Count; i++) lower[lowerSlots[i]] = cards[slots.Count + i];
+            }
+            return new Board(plan.Width, plan.Height, values, lower);
         }
     }
 }

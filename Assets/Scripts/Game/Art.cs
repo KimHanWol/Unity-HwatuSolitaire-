@@ -29,7 +29,8 @@ public static class Art
     public static readonly Color GreyDark = new Color32(0x63, 0x5A, 0x4E, 0xFF);
 
     public const int AtlasCols = 8;
-    public const int CardW = 258, CardH = 420;
+    // 아틀라스 한 칸 (패 310x505 + 둘레 투명 여백 4px, Tools/Cards/atlas.js)
+    public const int CardW = 318, CardH = 516;
     public const float CardAspect = CardH / (float)CardW;
     public const int BackIndex = 48;
 
@@ -91,9 +92,10 @@ public static class Art
 
     /// <summary>
     /// size x size 텍스처에 거리 함수를 칠한다. 좌표는 가운데가 (0,0), 가장자리가 ±1.
-    /// border를 주면 9-slice 테두리(픽셀)로 쓴다.
+    /// border를 주면 9-slice 테두리(픽셀)로 쓴다. 테두리가 있는 그림은 2배 해상도로 그리고 ppu 200으로 만들어
+    /// 화면에서는 같은 크기로 보이되 고해상도 화면에서도 둥근 모서리가 뭉개지지 않게 한다.
     /// </summary>
-    static Sprite Paint(string name, int size, Sdf f, int border = 0, Func<Vector2, float, Color> shade = null)
+    static Sprite Paint(string name, int size, Sdf f, int border = 0, Func<Vector2, float, Color> shade = null, float ppu = 100f)
     {
         if (cache.TryGetValue(name, out var s)) return s;
         var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, name = name };
@@ -111,7 +113,7 @@ public static class Art
             }
         tex.SetPixels32(px);
         tex.Apply(false, true);
-        s = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect, new Vector4(border, border, border, border));
+        s = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), ppu, 0, SpriteMeshType.FullRect, new Vector4(border, border, border, border));
         s.name = name;
         cache[name] = s;
         return s;
@@ -167,17 +169,17 @@ public static class Art
 
     // ------------------------------------------------------------ 모양
     /// <summary>둥근 사각형 (9-slice). 반지름 큰 것.</summary>
-    public static Sprite Round => Paint("round", 96, p => Box(p, Vector2.zero, Vector2.one, 0.6f), 30);
+    public static Sprite Round => Paint("round", 192, p => Box(p, Vector2.zero, Vector2.one, 0.6f), 60, null, 200f);
 
     /// <summary>둥근 사각형 (9-slice). 반지름 작은 것.</summary>
-    public static Sprite RoundSmall => Paint("roundSmall", 64, p => Box(p, Vector2.zero, Vector2.one, 0.45f), 15);
+    public static Sprite RoundSmall => Paint("roundSmall", 128, p => Box(p, Vector2.zero, Vector2.one, 0.45f), 30, null, 200f);
 
     /// <summary>둥근 사각형 테두리만 (선택 표시용 9-slice).</summary>
-    public static Sprite RoundOutline => Paint("roundOutline", 96, p => Mathf.Abs(Box(p, Vector2.zero, Vector2.one * 0.93f, 0.5f)) - 0.07f, 30);
+    public static Sprite RoundOutline => Paint("roundOutline", 192, p => Mathf.Abs(Box(p, Vector2.zero, Vector2.one * 0.93f, 0.5f)) - 0.07f, 60, null, 200f);
 
-    public static Sprite Circle128 => Paint("circle", 128, p => Circle(p, Vector2.zero, 0.98f));
+    public static Sprite Circle128 => Paint("circle", 256, p => Circle(p, Vector2.zero, 0.98f));
 
-    public static Sprite Ring => Paint("ring", 128, p => Mathf.Abs(Circle(p, Vector2.zero, 0.88f)) - 0.1f);
+    public static Sprite Ring => Paint("ring", 256, p => Mathf.Abs(Circle(p, Vector2.zero, 0.88f)) - 0.1f);
 
     /// <summary>가운데가 밝고 가장자리로 갈수록 사라지는 빛.</summary>
     public static Sprite Glow => Paint("glow", 128, p => -1f, 0, (p, d) =>
@@ -193,26 +195,26 @@ public static class Art
         return new Color(0f, 0f, 0f, r * r * 0.6f);
     });
 
-    public static Sprite Star => Paint("star", 128, p => Polygon(p, StarPoints(0.98f, 0.45f)) - 0.02f);
+    public static Sprite Star => Paint("star", 256, p => Polygon(p, StarPoints(0.98f, 0.45f)) - 0.02f);
 
     public static Sprite Petal => Paint("petal", 64, p => (new Vector2(p.x * 1.7f, p.y)).magnitude - 0.9f);
 
     public static Sprite Spark => Paint("spark", 64, p => Mathf.Min(Box(p, Vector2.zero, new Vector2(0.12f, 0.95f), 0.1f), Box(p, Vector2.zero, new Vector2(0.95f, 0.12f), 0.1f)));
 
     // ------------------------------------------------------------ 아이콘 (흰색, 쓰는 쪽에서 색을 입힌다)
-    public static Sprite IconPause => Paint("iPause", 96, p => Mathf.Min(Box(p, new Vector2(-0.32f, 0), new Vector2(0.16f, 0.62f), 0.1f), Box(p, new Vector2(0.32f, 0), new Vector2(0.16f, 0.62f), 0.1f)));
+    public static Sprite IconPause => Paint("iPause", 192, p => Mathf.Min(Box(p, new Vector2(-0.32f, 0), new Vector2(0.16f, 0.62f), 0.1f), Box(p, new Vector2(0.32f, 0), new Vector2(0.16f, 0.62f), 0.1f)));
 
-    public static Sprite IconBack => Paint("iBack", 96, p => Mathf.Min(
+    public static Sprite IconBack => Paint("iBack", 192, p => Mathf.Min(
         Segment(p, new Vector2(0.3f, 0.6f), new Vector2(-0.3f, 0f), 0.14f),
         Segment(p, new Vector2(-0.3f, 0f), new Vector2(0.3f, -0.6f), 0.14f)));
 
-    public static Sprite IconPlay => Paint("iPlay", 96, p => Polygon(p, new[] { new Vector2(-0.4f, -0.62f), new Vector2(0.62f, 0f), new Vector2(-0.4f, 0.62f) }) - 0.06f);
+    public static Sprite IconPlay => Paint("iPlay", 192, p => Polygon(p, new[] { new Vector2(-0.4f, -0.62f), new Vector2(0.62f, 0f), new Vector2(-0.4f, 0.62f) }) - 0.06f);
 
-    public static Sprite IconGrid => Paint("iGrid", 96, p => Mathf.Min(
+    public static Sprite IconGrid => Paint("iGrid", 192, p => Mathf.Min(
         Mathf.Min(Box(p, new Vector2(-0.33f, 0.33f), new Vector2(0.24f, 0.24f), 0.08f), Box(p, new Vector2(0.33f, 0.33f), new Vector2(0.24f, 0.24f), 0.08f)),
         Mathf.Min(Box(p, new Vector2(-0.33f, -0.33f), new Vector2(0.24f, 0.24f), 0.08f), Box(p, new Vector2(0.33f, -0.33f), new Vector2(0.24f, 0.24f), 0.08f))));
 
-    public static Sprite IconRetry => Paint("iRetry", 96, p =>
+    public static Sprite IconRetry => Paint("iRetry", 192, p =>
     {
         float ring = Mathf.Abs(Circle(p, Vector2.zero, 0.55f)) - 0.12f;
         // 오른쪽 위를 비워 화살표 자리를 낸다.
@@ -222,7 +224,7 @@ public static class Art
         return Mathf.Min(arc, head);
     });
 
-    public static Sprite IconGear => Paint("iGear", 96, p =>
+    public static Sprite IconGear => Paint("iGear", 192, p =>
     {
         float body = Circle(p, Vector2.zero, 0.56f);
         for (int i = 0; i < 8; i++)
@@ -230,7 +232,7 @@ public static class Art
         return Mathf.Max(body, -Circle(p, Vector2.zero, 0.24f));
     });
 
-    public static Sprite IconBulb => Paint("iBulb", 96, p =>
+    public static Sprite IconBulb => Paint("iBulb", 192, p =>
     {
         float bulb = Circle(p, new Vector2(0f, 0.2f), 0.5f);
         float neck = Box(p, new Vector2(0f, -0.38f), new Vector2(0.24f, 0.2f), 0.06f);
@@ -241,7 +243,7 @@ public static class Art
         return Mathf.Min(Mathf.Max(shape, -gap), baseCap);
     });
 
-    public static Sprite IconBomb => Paint("iBomb", 128, p =>
+    public static Sprite IconBomb => Paint("iBomb", 256, p =>
     {
         float body = Circle(p, new Vector2(-0.08f, -0.12f), 0.66f);
         float cap = Box(Rot(p - new Vector2(0.36f, 0.42f), 45f), Vector2.zero, new Vector2(0.17f, 0.12f), 0.03f);
@@ -256,7 +258,7 @@ public static class Art
         return c;
     });
 
-    public static Sprite IconLock => Paint("iLock", 96, p =>
+    public static Sprite IconLock => Paint("iLock", 192, p =>
     {
         float body = Box(p, new Vector2(0f, -0.25f), new Vector2(0.52f, 0.42f), 0.1f);
         float shackle = Mathf.Abs(Circle(p, new Vector2(0f, 0.2f), 0.32f)) - 0.09f;
@@ -265,15 +267,15 @@ public static class Art
         return Mathf.Max(Mathf.Min(body, shackle), -hole);
     });
 
-    public static Sprite IconCheck => Paint("iCheck", 96, p => Mathf.Min(
+    public static Sprite IconCheck => Paint("iCheck", 192, p => Mathf.Min(
         Segment(p, new Vector2(-0.55f, 0f), new Vector2(-0.15f, -0.42f), 0.13f),
         Segment(p, new Vector2(-0.15f, -0.42f), new Vector2(0.58f, 0.45f), 0.13f)));
 
-    public static Sprite IconClose => Paint("iClose", 96, p => Mathf.Min(
+    public static Sprite IconClose => Paint("iClose", 192, p => Mathf.Min(
         Segment(p, new Vector2(-0.5f, -0.5f), new Vector2(0.5f, 0.5f), 0.13f),
         Segment(p, new Vector2(-0.5f, 0.5f), new Vector2(0.5f, -0.5f), 0.13f)));
 
-    public static Sprite IconClock => Paint("iClock", 96, p =>
+    public static Sprite IconClock => Paint("iClock", 192, p =>
     {
         float ring = Mathf.Abs(Circle(p, Vector2.zero, 0.72f)) - 0.11f;
         float hands = Mathf.Min(Segment(p, Vector2.zero, new Vector2(0f, 0.45f), 0.08f), Segment(p, Vector2.zero, new Vector2(0.32f, 0f), 0.08f));
@@ -281,7 +283,7 @@ public static class Art
     });
 
     /// <summary>광고 보기(영상) 표시.</summary>
-    public static Sprite IconVideo => Paint("iVideo", 96, p =>
+    public static Sprite IconVideo => Paint("iVideo", 192, p =>
     {
         float body = Box(p, new Vector2(-0.12f, 0f), new Vector2(0.5f, 0.38f), 0.1f);
         float lens = Polygon(p, new[] { new Vector2(0.38f, 0f), new Vector2(0.85f, 0.32f), new Vector2(0.85f, -0.32f) });

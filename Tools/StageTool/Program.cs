@@ -57,7 +57,7 @@ static class Program
         foreach (var s in stages)
         {
             var plan = StageGenerator.MakePlan(s.number);
-            int cards = s.cells.Count(v => v >= 0);
+            int cards = s.CreateBoard().CardCount;
             int blocks = s.cells.Count(v => v == Board.Block);
             int months = s.cells.Where(v => v >= 0).Select(Board.Month).Distinct().Count();
             report.Append(s.number).Append('\t').Append(plan.Chapter + 1).Append('\t')
@@ -88,10 +88,11 @@ static class Program
                 height = e.GetProperty("height").GetInt32(),
                 gravity = e.GetProperty("gravity").GetInt32(),
                 cells = e.GetProperty("cells").EnumerateArray().Select(x => x.GetInt32()).ToArray(),
+                under = e.TryGetProperty("under", out var u) ? u.EnumerateArray().Select(x => x.GetInt32()).ToArray() : null,
             };
             var board = s.CreateBoard();
             bool evenMonths = Enumerable.Range(0, Board.Months).All(m => board.CountMonth(m) % 2 == 0);
-            bool solvable = Solver.Solve(board, s.Gravity, 7, 80) != null;
+            bool solvable = Solver.Solve(board, s.Gravity, 7, 400) != null;
             if (!evenMonths || !solvable)
             {
                 bad++;
@@ -118,7 +119,9 @@ static class Program
               .Append(",\"timeLimit\":").Append(s.timeLimit)
               .Append(",\"stackWindow\":").Append(s.stackWindow.ToString(CultureInfo.InvariantCulture))
               .Append(",\"simSeconds\":").Append(s.simSeconds.ToString(CultureInfo.InvariantCulture))
-              .Append(",\"cells\":[").Append(string.Join(",", s.cells)).Append("]}");
+              .Append(",\"cells\":[").Append(string.Join(",", s.cells)).Append("]");
+            if (s.under != null) sb.Append(",\"under\":[").Append(string.Join(",", s.under)).Append("]");
+            sb.Append("}");
             sb.Append(i < stages.Length - 1 ? ",\n" : "\n");
         }
         sb.Append("]}\n");

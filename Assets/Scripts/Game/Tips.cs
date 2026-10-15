@@ -74,6 +74,21 @@ public static class Tips
         p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 640f, () => p.Close(), 0f, 0f, 130f);
     }
 
+    public static void ShowLayers()
+    {
+        var p = Popup.Open(new Vector2(900f, 860f), Loc.T("두 겹으로 쌓인 패", "Stacked two deep"), true);
+        float w = 130f, h = w * Art.CardAspect;
+        var back = Ui.Image(p.Panel, Art.Back, new Color(0.85f, 0.8f, 0.8f), "Under");
+        Ui.Place(back.rectTransform, 0.5f, 1f, new Vector2(w, h), new Vector2(10f, -268f));
+        var top = Ui.Image(p.Panel, Art.Card(16), Color.white, "Top");
+        Ui.Place(top.rectTransform, 0.5f, 1f, new Vector2(w, h), new Vector2(0f, -260f));
+        p.Label(Loc.T(
+            "뒷면이 비치는 칸은 패가 두 장 쌓여 있어요.\n위 패를 지우면 아래 패가 뒤집혀 올라와요.\n무엇이 나올지 생각하며 지울 순서를 골라 보세요!",
+            "Cards with a back peeking out are stacked two deep.\nRemove the top one and the card below flips up.\nChoose your order wisely!"),
+            40, Art.GreyDark, 560f, 220f);
+        p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 750f, () => p.Close(), 0f, 0f, 130f);
+    }
+
     public static void ShowBlocks()
     {
         var p = Popup.Open(new Vector2(900f, 820f), Loc.T("엎어진 패", "Face-down cards"), true);

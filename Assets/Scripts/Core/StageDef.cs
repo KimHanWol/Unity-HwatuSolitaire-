@@ -15,6 +15,8 @@ namespace HwatuSolitaire.Core
         public int height;
         /// <summary>행 우선(y * width + x). 패 번호 0~47, -1 빈칸, -2 막힌 칸.</summary>
         public int[] cells;
+        /// <summary>2층 판의 아래층 (cells와 같은 길이, -1은 아래층 없음). 1층 판이면 비어 있다.</summary>
+        public int[] under;
         /// <summary>GravityMode 값.</summary>
         public int gravity;
         /// <summary>이 시간(초) 안에 깨면 별 3개.</summary>
@@ -30,7 +32,7 @@ namespace HwatuSolitaire.Core
 
         public GravityMode Gravity => (GravityMode)gravity;
 
-        public Board CreateBoard() => new Board(width, height, cells);
+        public Board CreateBoard() => new Board(width, height, cells, under != null && under.Length == cells.Length ? under : null);
 
         /// <summary>걸린 시간으로 별 개수(0~3). 제한 시간을 넘겼으면 1개(부활해서 깬 경우).</summary>
         public int StarsFor(float seconds)

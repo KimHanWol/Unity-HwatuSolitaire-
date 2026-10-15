@@ -156,6 +156,40 @@ public class StageTests
     }
 
     [Fact]
+    public void TakeRevealsUnderLayer()
+    {
+        var b = new Board(2, 1, new[] { 0, 1 }, new[] { 4, Board.Empty });
+        Assert.Equal(3, b.CardCount);
+        Assert.False(b.Passable(0, 0));
+        Assert.Equal(4, b.Take(new Cell(0, 0)));
+        Assert.Equal(4, b[0, 0]);
+        Assert.Equal(Board.Empty, b.Take(new Cell(0, 0)));
+        Assert.True(b.Passable(0, 0));
+    }
+
+    [Fact]
+    public void LayeredStagesExistAndAreSolvable()
+    {
+        int layered = 0;
+        for (int n = 78; n <= StageGenerator.StageCount; n += 5)
+        {
+            var plan = StageGenerator.MakePlan(n);
+            bool any = false;
+            foreach (bool l in plan.Layered) any |= l;
+            if (!any) continue;
+            layered++;
+            Assert.Equal(GravityMode.None, plan.Gravity);
+            var stage = StageGenerator.Build(n);
+            var board = stage.CreateBoard();
+            Assert.True(board.HasLayers);
+            for (int m = 0; m < Board.Months; m++) Assert.True(board.CountMonth(m) % 2 == 0);
+            Assert.NotNull(Solver.Solve(board, stage.Gravity, 3, 80));
+            if (layered >= 4) break;
+        }
+        Assert.True(layered >= 4);
+    }
+
+    [Fact]
     public void ShuffleKeepsCardsAndFindsMove()
     {
         var stage = StageGenerator.Build(80);

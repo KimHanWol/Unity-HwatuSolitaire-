@@ -164,6 +164,24 @@ public class CardView : MonoBehaviour, IPointerDownHandler
         }, null, delay);
     }
 
+    /// <summary>뒷면으로 시작해서 delay 뒤에 뒤집혀 그림이 드러난다 (2층 판의 아래 패가 올라올 때).</summary>
+    public void FlipFromBack(float delay)
+    {
+        face.sprite = Art.Back;
+        monthBadge.SetActive(false);
+        bool shown = false;
+        Anim.Run(lift, 0.32f, t =>
+        {
+            float sx = t < 0.5f ? 1f - Anim.InCubic(t * 2f) : Anim.OutCubic((t - 0.5f) * 2f);
+            lift.localScale = new Vector3(Mathf.Max(0.02f, sx), 1f, 1f);
+            if (t >= 0.5f && !shown)
+            {
+                shown = true;
+                SetValue(Value);
+            }
+        }, null, delay);
+    }
+
     void Update()
     {
         pulse += Time.unscaledDeltaTime;

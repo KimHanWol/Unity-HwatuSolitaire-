@@ -27,6 +27,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
 
     CardView[,] views;
     readonly List<CardView> blockViews = new List<CardView>();
+    // 2층 판: 위 패 밑으로 살짝 비치는 아래층 뒷면
+    Image[,] underViews;
     CardView selected;
     CardView[] hint;
 
@@ -264,12 +266,15 @@ public class GameScreen : MonoBehaviour, IBackHandler
     void BuildBoard()
     {
         views = new CardView[def.width, def.height];
+        underViews = new Image[def.width, def.height];
         ComputeCell();
         for (int y = 0; y < def.height; y++)
             for (int x = 0; x < def.width; x++)
             {
                 int v = board[x, y];
                 if (v == Board.Empty) continue;
+                // 아래층 뒷면은 자기 패 바로 앞에 그려야 먼저 그려진 왼쪽·위 이웃 패 위로 비친다.
+                if (board.Under(new Cell(x, y)) >= 0) CreateUnder(new Cell(x, y), (x + y) * 0.025f);
                 var view = CardView.Create(boardRoot, v, CardSize);
                 view.Cell = new Cell(x, y);
                 view.Rt.anchoredPosition = CellPos(x, y);
@@ -322,6 +327,59 @@ public class GameScreen : MonoBehaviour, IBackHandler
             v.Rt.sizeDelta = CardSize;
             v.Rt.anchoredPosition = CellPos(v.Cell);
         }
+        for (int y = 0; y < def.height; y++)
+            for (int x = 0; x < def.width; x++)
+                if (underViews[x, y] != null) PlaceUnder(underViews[x, y].rectTransform, new Cell(x, y));
+    }
+
+    // ------------------------------------------------------------ 2층
+    /// <summary>
+    /// 아래층 패는 위 패보다 살짝 왼쪽 위로 비켜 뒷면 가장자리만 보이게 깐다.
+    /// (패는 왼쪽 위부터 차례로 그리므로, 오른쪽 아래로 비키면 다음 이웃 패에 가려진다.)
+    /// </summary>
+    void PlaceUnder(RectTransform rt, Cell c)
+    {
+        rt.sizeDelta = CardSize;
+        rt.anchoredPosition = CellPos(c) + new Vector2(-cellW * 0.11f, cellH * 0.075f);
+    }
+
+    void CreateUnder(Cell c, float delay)
+    {
+        // 위 패의 붉은 테두리와 섞이지 않게 어둡게 칠해 "두께"처럼 보이게 한다.
+        var img = Ui.Image(boardRoot, Art.Back, new Color(0.68f, 0.5f, 0.48f), "Under");
+        img.rectTransform.anchorMin = img.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+        PlaceUnder(img.rectTransform, c);
+        underViews[c.X, c.Y] = img;
+        var rt = img.rectTransform;
+        rt.localScale = Vector3.zero;
+        Anim.Run(rt, 0.3f, t => rt.localScale = Vector3.one * Anim.OutBack(t), null, delay);
+    }
+
+    /// <summary>
+    /// 위 패가 빠진 칸들: 아래층 패가 올라왔으면 그 자리에 새 패를 놓고 뒷면에서 뒤집어 보여 준다.
+    /// (모델은 이미 Board.Take로 바뀌어 있다.)
+    /// </summary>
+    void RevealUnder(IEnumerable<Cell> removed, float delay)
+    {
+        foreach (var c in removed)
+        {
+            if (underViews[c.X, c.Y] == null || board[c] < 0) continue;
+            var under = underViews[c.X, c.Y];
+            underViews[c.X, c.Y] = null;
+            var view = CardView.Create(boardRoot, board[c], CardSize);
+            view.Cell = c;
+            view.Pressed = OnCardPressed;
+            views[c.X, c.Y] = view;
+            view.Rt.anchoredPosition = under.rectTransform.anchoredPosition;
+            Vector2 target = CellPos(c);
+            var rt = view.Rt;
+            Anim.Run(rt, 0.22f, t => rt.anchoredPosition = Vector2.Lerp(under.rectTransform.anchoredPosition, target, Anim.OutCubic(t)), () =>
+            {
+                if (under != null) Destroy(under.gameObject);
+            }, delay);
+            view.FlipFromBack(delay);
+        }
+        RefreshBombMarks();
     }
 
     IEnumerable<CardView> AllViews()
@@ -420,7 +478,9 @@ public class GameScreen : MonoBehaviour, IBackHandler
         Vector2 from = a.Rt.anchoredPosition, to = b.Rt.anchoredPosition;
         const float fly = 0.15f;
 
-        var slides = Rules.Remove(board, a.Cell, b.Cell, gravity);
+        Cell cellA = a.Cell, cellB = b.Cell;
+        var slides = Rules.Remove(board, cellA, cellB, gravity);
+        RevealUnder(new[] { cellA, cellB }, fly + 0.12f);
         // 판에 같은 달이 더 남아 있으면 두 장이 잠깐 포개져 셋째 패를 기다린다.
         Pending p = null;
         if (board.CountMonth(month) > 0 && def.stackWindow > 0f)
@@ -513,7 +573,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
         if (p.ring != null) Destroy(p.ring.gameObject);
 
         views[third.Cell.X, third.Cell.Y] = null;
-        board[third.Cell] = Board.Empty;
+        board.Take(third.Cell);
+        RevealUnder(new[] { third.Cell }, 0.25f);
         NoHit(third);
         third.Rt.SetAsLastSibling();
         var slides = Gravity.Apply(board, gravity);
@@ -739,7 +800,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         {
             var v = views[c.X, c.Y];
             views[c.X, c.Y] = null;
-            board[c] = Board.Empty;
+            board.Take(c);
             if (v == null) continue;
             float delay = Dist(c, origin) * 0.07f;
             last = Mathf.Max(last, delay);
@@ -760,6 +821,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
                 Destroy(v.gameObject);
             }, delay);
         }
+        RevealUnder(cells, last + 0.25f);
         var slides = Gravity.Apply(board, gravity);
         AnimateSlides(slides, last + 0.25f);
         RefreshBombMarks();
@@ -1089,6 +1151,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
     {
         if (def.number == 1) Tips.ShowOnce("rules", Tips.ShowRules);
         else if (def.number == 2) Tips.ShowOnce("stack", Tips.ShowCombo);
+        else if (board.HasLayers) Tips.ShowOnce("layers", Tips.ShowLayers);
         else if (gravity != GravityMode.None) Tips.ShowOnce("gravity", () => Tips.ShowGravity(gravity));
         else if (blockViews.Count > 0) Tips.ShowOnce("blocks", Tips.ShowBlocks);
     }
@@ -1140,7 +1203,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
     public void DevPause() => OpenPause();
     public void DevWin()
     {
-        foreach (var c in board.CardCells()) board[c] = Board.Empty;
+        foreach (var c in board.CardCells()) { board.Take(c); board.Take(c); }
         finished = true;
         running = false;
         Win();

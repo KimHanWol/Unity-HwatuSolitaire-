@@ -76,6 +76,21 @@ public class DevAutoShot : MonoBehaviour
         yield return Wait(0.8f);
         yield return Shot("timeup");
 
+        // 2층 판: 처음 모습과, 몇 짝 지운 뒤 아래 패가 드러난 모습
+        App.I.Play(78);
+        yield return Wait(1.4f);
+        App.I.CloseAllPopups();
+        yield return Wait(0.3f);
+        yield return Shot("stage78_layers");
+        game = FindAnyObjectByType<GameScreen>();
+        for (int i = 0; i < 4; i++)
+        {
+            game.DevPlayMove();
+            yield return Wait(2.5f);
+        }
+        yield return Wait(0.6f);
+        yield return Shot("layers_revealed");
+
         foreach (int stage in new[] { 60, 130, 260, 300 })
         {
             App.I.Play(stage);

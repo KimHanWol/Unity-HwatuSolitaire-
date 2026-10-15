@@ -49,11 +49,14 @@ namespace HwatuSolitaire.Core
             return byMonth;
         }
 
-        /// <summary>두 패를 없애고 중력을 적용한다. 미끄러진 패 목록을 돌려준다.</summary>
+        /// <summary>
+        /// 두 패를 없애고(아래층 패가 있으면 드러난다) 중력을 적용한다. 미끄러진 패 목록을 돌려준다.
+        /// 2층 판에는 중력을 쓰지 않는다 (StageGenerator가 둘을 함께 내지 않는다).
+        /// </summary>
         public static List<Slide> Remove(Board board, Cell a, Cell b, GravityMode gravity)
         {
-            board[a] = Board.Empty;
-            board[b] = Board.Empty;
+            board.Take(a);
+            board.Take(b);
             return Gravity.Apply(board, gravity);
         }
 
@@ -63,22 +66,31 @@ namespace HwatuSolitaire.Core
         /// </summary>
         public static void Shuffle(Board board, GravityMode gravity, Rng rng, int attempts = 40)
         {
+            // 위층과 아래층의 패를 모두 모아 같은 자리들에 다시 나눠 준다 (판 모양·층 구조는 그대로).
             var cells = board.CardCells();
+            var lower = new List<Cell>();
+            foreach (var c in cells) if (board.Under(c) >= 0) lower.Add(c);
             if (cells.Count < 2) return;
             var values = new List<int>();
             foreach (var c in cells) values.Add(board[c]);
+            foreach (var c in lower) values.Add(board.Under(c));
 
             int[] fallback = null;
             for (int t = 0; t < attempts; t++)
             {
                 rng.Shuffle(values);
-                for (int i = 0; i < cells.Count; i++) board[cells[i]] = values[i];
+                Assign(board, cells, lower, values);
                 if (!HasMove(board)) continue;
                 if (fallback == null) fallback = values.ToArray();
                 if (Solver.Solve(board, gravity, rng.Next(int.MaxValue), 6) != null) return;
             }
-            if (fallback != null)
-                for (int i = 0; i < cells.Count; i++) board[cells[i]] = fallback[i];
+            if (fallback != null) Assign(board, cells, lower, new List<int>(fallback));
+        }
+
+        static void Assign(Board board, List<Cell> cells, List<Cell> lower, List<int> values)
+        {
+            for (int i = 0; i < cells.Count; i++) board[cells[i]] = values[i];
+            for (int i = 0; i < lower.Count; i++) board.SetUnder(lower[i], values[cells.Count + i]);
         }
     }
 }

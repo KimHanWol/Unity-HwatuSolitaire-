@@ -84,8 +84,8 @@ public static class Tips
         var p = Popup.Open(new Vector2(920f, 1180f), Loc.T("만든 사람 · 저작권", "Credits"), true);
         p.Label(App.Title, 56, Art.Ink, 200f, 80f);
         p.Label(Loc.T(
-            "<b>화투 그림</b>\nWikimedia Commons \"SVG Hwatu\"\nSpenĉjo, Marcus Richert, Louie Mantia Jr.\nCC BY-SA 4.0 (크기만 바꿔 사용)\ncreativecommons.org/licenses/by-sa/4.0\n\n<b>글꼴</b>\n주아체 (Woowa Brothers) · SIL OFL 1.1\n\n<b>효과음</b>\n짝·쌌다: Freesound 박수 (CC0) · 패 소리: Kenney (CC0)\n그 밖의 소리·음악·화투 뒷면: 직접 만듦",
-            "<b>Card art</b>\nWikimedia Commons \"SVG Hwatu\"\nSpenĉjo, Marcus Richert, Louie Mantia Jr.\nCC BY-SA 4.0 (resized)\ncreativecommons.org/licenses/by-sa/4.0\n\n<b>Font</b>\nJua (Woowa Brothers) · SIL OFL 1.1\n\n<b>Sounds</b>\nSnaps: Freesound claps (CC0) · Card sounds: Kenney (CC0)\nOther sounds, music, card back: original"),
+            "<b>화투 그림</b>\nWikimedia Commons \"SVG Hwatu\"\nSpenĉjo, Marcus Richert, Louie Mantia Jr.\nCC BY-SA 4.0 (크기만 바꿔 사용)\ncreativecommons.org/licenses/by-sa/4.0\n\n<b>글꼴</b>\n주아체 (Woowa Brothers) · SIL OFL 1.1\n\n<b>효과음</b>\n짝·쌌다: Freesound 뺨 치는 소리 (CC0) · 패 소리: Kenney (CC0)\n그 밖의 소리·음악·화투 뒷면: 직접 만듦",
+            "<b>Card art</b>\nWikimedia Commons \"SVG Hwatu\"\nSpenĉjo, Marcus Richert, Louie Mantia Jr.\nCC BY-SA 4.0 (resized)\ncreativecommons.org/licenses/by-sa/4.0\n\n<b>Font</b>\nJua (Woowa Brothers) · SIL OFL 1.1\n\n<b>Sounds</b>\nSnaps: Freesound slaps (CC0) · Card sounds: Kenney (CC0)\nOther sounds, music, card back: original"),
             38, Art.GreyDark, 600f, 720f);
         p.Button(Loc.T("닫기", "Close"), Art.IconClose, Art.Red, Art.RedDark, 1060f, () => p.Close(), 0f, 0f, 130f);
     }

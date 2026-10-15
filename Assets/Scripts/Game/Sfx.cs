@@ -27,12 +27,11 @@ public class Sfx : MonoBehaviour
 
     public static void Select() => Play(i => i.select, 0.45f);
     public static void Deny() => Play(i => i.deny, 0.5f);
-    /// <summary>쌌다: 짝·짝·짝! 세 번 내리치는 녹음(있으면)과 북·징을 함께. 녹음이 없으면 북·징만.</summary>
+    /// <summary>쌌다: 박수 짝·짝·짝! 녹음(Resources/Audio/stack_slap)만 울린다. 녹음이 없을 때만 코드로 만든 북·징.</summary>
     public static void Stack()
     {
         if (instance == null) return;
-        if (instance.stackSlap != null) instance.PlayClip(instance.stackSlap, 1f);
-        instance.PlayClip(instance.stack, instance.stackSlap != null ? 0.55f : 0.9f);
+        instance.PlayClip(instance.stackSlap != null ? instance.stackSlap : instance.stack, 1f);
     }
     public static void Shuffle() => Play(i => i.shuffle, 0.6f);
     public static void Clear() => Play(i => i.clear, 0.8f);

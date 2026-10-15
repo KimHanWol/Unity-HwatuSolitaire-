@@ -4,13 +4,14 @@
 // 재료 (둘 다 CC0, https://kenney.nl):
 //   Casino Audio  https://kenney.nl/assets/casino-audio   (card-place, card-slide, card-shuffle ...)
 //   Impact Sounds https://kenney.nl/assets/impact-sounds  (impactPunch ...)
-//   박수 (Freesound, 모두 CC0 — 파일 이름은 소리 번호):
-//     561119 Sorinious_Genious "Clap-9", 463688 Landau00 "HandClap5", 478657 xUMR "clap.wav", 789991 randbsoundbites "Single clap"
+//   박수·뺨 치는 소리 (Freesound, 모두 CC0 — 파일 이름은 소리 번호, 한 폴더에 둔다):
+//     232928 bmusic92 "Smacking Face", 539163 khenshom "Slap hit on the face or shoulder", 478657 xUMR "clap.wav"
 //     https://freesound.org/s/<번호>/ 에서 받는다 (미리듣기 mp3 로도 충분하다).
-// 사용: node Tools/Audio/make_sfx.js <casino 폴더> <impact 폴더> <박수 폴더>   (ffmpeg 필요)
+// 사용: node Tools/Audio/make_sfx.js <casino 폴더> <impact 폴더> <박수·뺨 소리 폴더>   (ffmpeg 필요)
 //
-// 짝: 고스톱 앱의 "짝!"은 박수에 가깝다. 박수 녹음 둘을 "가장 큰 순간"에 정확히 맞춰 겹쳐(시작 순간으로 맞추면 최고점이 어긋나
-//     "타닥"처럼 갈라진다) 손바닥이 맞닿는 날카로운 소리와 울림을 함께 얻고, 짧게 사라지게 다듬어 살짝 포화시킨다.
+// 짝: 고스톱 앱의 "짝!"은 박수·뺨 치는 소리처럼 높고 날카롭다. 녹음 가운데 가장 밝은(고음이 많은) 한 대만 잘라 쓰고
+//     (다른 소리를 겹치면 섞인 소리로 들린다), 고음을 조금 더 올려 짧게 다듬는다.
+//     어느 한 대를 고를지는 파일 안 시각(초)으로 정한다 — 여러 번 친 녹음이 많아서.
 const { execFileSync } = require('child_process');
 const fs = require('fs'), path = require('path'), os = require('os');
 
@@ -37,8 +38,10 @@ function find(dir, name) {
 }
 
 /** ffmpeg 필터를 거쳐 모노 float 배열로 읽는다. */
-function decode(file, filter) {
+function decode(file, filter, start = 0, dur = 0) {
   const args = ['-hide_banner', '-loglevel', 'error', '-i', file];
+  if (start > 0) args.push('-ss', String(start));
+  if (dur > 0) args.push('-t', String(dur));
   if (filter) args.push('-af', filter);
   args.push('-ac', '1', '-ar', String(SR), '-f', 'f32le', '-');
   const buf = execFileSync('ffmpeg', args, { maxBuffer: 1 << 28 });
@@ -94,33 +97,28 @@ function write(name, x, quality = 6) {
   console.log('wrote ' + name + '.ogg (' + (x.length / SR).toFixed(2) + 's)');
 }
 
-// ------------------------------------------------------------ 짝 (박수)
-/** 주 박수 + 보조 박수(날카로운 앞부분을 더해 또렷하게)를 최고점에 맞춰 겹친다. */
-function snap(name, mainId, accentId, accentGain, bright) {
-  const main = alignPeak(decode(clap(mainId), 'highpass=f=250,equalizer=f=2200:t=q:w=1:g=' + bright), 0.004);
-  const accent = alignPeak(decode(clap(accentId), 'highpass=f=900'), 0.004);
-  // 보조 박수는 앞 30ms 만 (뒤 울림은 주 박수 것을 쓴다)
-  const head = accent.slice(0, Math.round(0.03 * SR));
-  envelope(head, 0.015, 0.008);
-  let x = mix([{ data: main, gain: 1.0 }, { data: head, gain: accentGain }], 0.24);
+// ------------------------------------------------------------ 짝 (뺨·박수 한 대)
+/** id 녹음의 at초 근처 한 대만 잘라, 최고점을 맨 앞에 맞추고 고음을 올려 짧게 다듬는다. */
+function snap(name, id, at) {
+  let x = decode(clap(id), 'highpass=f=350,highshelf=f=3000:g=4', Math.max(0, at - 0.05), 0.5);
+  x = alignPeak(x, 0.003);
+  x = x.slice(0, Math.round(0.24 * SR));
   x = envelope(x, 0.03, 0.06);
-  write(name, finish(x, 1.5, -0.8));
+  write(name, finish(x, 1.0, -0.8));
   return x;
 }
-const s1 = snap('snap', '561119', '463688', 0.6, 3);
-const s2 = snap('snap2', '478657', '561119', 0.5, 2);
-const s3 = snap('snap3', '789991', '463688', 0.5, 3);
+const s1 = snap('snap', '232928', 2.128);   // 가장 밝은 뺨 소리 (평균 6.2kHz)
+const s2 = snap('snap2', '539163', 0.184);  // 손바닥으로 탁 (4.8kHz)
+const s3 = snap('snap3', '232928', 5.098);  // 같은 녹음의 다른 한 대 (5.0kHz)
 
-// ------------------------------------------------------------ 쌌다: 짝·짝·짝! 세 번, 마지막은 크고 묵직하게
+// ------------------------------------------------------------ 쌌다: 박수 짝·짝·짝! 세 번만 (다른 소리 없이), 마지막이 가장 크게
 {
-  const heavy = alignPeak(decode(find(IMPACT, 'impactPunch_heavy_000.ogg'), 'lowpass=f=1800'), 0.004);
   let x = mix([
     { data: s1, gain: 0.6, delay: 0.0 },
-    { data: s2, gain: 0.75, delay: 0.13 },
+    { data: s2, gain: 0.8, delay: 0.13 },
     { data: s3, gain: 1.0, delay: 0.27 },
-    { data: heavy, gain: 0.45, delay: 0.27 },
-  ], 0.9);
-  write('stack_slap', finish(envelope(x, 0.45, 0.15), 1.4, -0.8));
+  ], 0.6);
+  write('stack_slap', finish(envelope(x, 0.4, 0.08), 1.0, -0.8));
 }
 
 // ------------------------------------------------------------ 패 집기: 카드를 살짝 미는 소리 앞부분

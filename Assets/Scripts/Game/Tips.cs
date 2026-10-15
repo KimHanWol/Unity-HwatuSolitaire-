@@ -47,8 +47,8 @@ public static class Tips
         var bomb = Ui.Image(p.Panel, Art.IconBomb, Color.white, "Bomb");
         Ui.Place(bomb.rectTransform, 0.5f, 1f, new Vector2(200f, 200f), new Vector2(0f, -240f));
         p.Label(Loc.T(
-            "짝을 맞추면 두 장이 잠깐 <color=#C8102E>포개져</color> 있어요.\n(둘레의 금빛 고리가 줄어드는 동안)\n\n그 사이에 <color=#C8102E>같은 달 패를 하나 더</color> 누르면\n세 장이 뭉쳐 \"쌌다!\" — 폭탄 칸으로 가요. (최대 3개)\n\n폭탄 달의 빛나는 패를 하나 누르면\n그 달 패가 한꺼번에 <color=#C8102E>펑!</color> 터져요.",
-            "After a pair, the two cards <color=#C8102E>stay stacked</color> briefly\n(while the gold ring runs down).\n\nTap <color=#C8102E>one more card of that month</color> in time and\nthe three clump up - \"Stacked!\" - into the bomb tray (max 3).\n\nTap any glowing card of a bomb month and\nall of that month go <color=#C8102E>BOOM</color> at once!"),
+            "짝을 맞추면 두 장이 잠깐 <color=#C8102E>포개져</color> 있어요.\n(둘레의 금빛 고리가 줄어드는 동안)\n\n그 사이에 <color=#C8102E>같은 달 패를 하나 더</color> 누르면\n세 장이 뭉쳐 \"쌌다!\" — 폭탄 칸으로 가요. (최대 3개)\n\n폭탄 달의 빛나는 패를 하나 누르면 그 패와\n둘레의 짝 여러 쌍이 한꺼번에 <color=#C8102E>펑!</color> 터져요.",
+            "After a pair, the two cards <color=#C8102E>stay stacked</color> briefly\n(while the gold ring runs down).\n\nTap <color=#C8102E>one more card of that month</color> in time and\nthe three clump up - \"Stacked!\" - into the bomb tray (max 3).\n\nTap a glowing card of a bomb month: it and\nseveral nearby pairs go <color=#C8102E>BOOM</color> at once!"),
             40, Art.GreyDark, 640f, 520f);
         p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 1040f, () => p.Close(), 0f, 0f, 140f);
     }

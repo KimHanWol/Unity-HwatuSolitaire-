@@ -9,8 +9,8 @@ using UnityEngine.UI;
 /// 규칙: 같은 달 화투 두 장을 꺾임 2번 이하의 선(빈칸·판 바깥만 지남)으로 이으면 "짝!" 하고 사라진다.
 /// 쌌다: 짝을 맞추면 두 장이 그 자리에 잠깐(stackWindow초, 고리 시간) 포개져 있다. 그 사이에 같은 달 패를 하나 더 누르면
 /// 고스톱처럼 세 장이 뭉쳐 "쌌다!" → 그 뭉치가 아래 폭탄 칸으로 간다 (최대 3뭉치, 셋째 패는 선 연결 필요 없음).
-/// 폭탄: 폭탄 칸에 있는 달의 패를 판에서 아무거나 하나 누르면 뭉치와 판의 그 달 패가 한꺼번에 펑 터진다.
-/// (달마다 장수가 짝수라 셋을 빼면 판에 홀수 장이 남는데, 폭탄이 그 달을 몽땅 지우므로 판은 항상 끝까지 풀린다.)
+/// 폭탄: 폭탄 칸에 있는 달의 패를 판에서 하나 누르면 그 패(뭉친 셋과 합쳐 넷째 장)와, 그 둘레의 짝(달 상관없이 같은 달끼리) 몇 쌍이
+/// 한꺼번에 펑 터진다 (BlastCells). 짝 단위로 지우므로 달마다 장수는 짝수로 돌아온다. 그 뒤 막히면 자동 섞기가 받쳐 준다.
 /// 시간 안에 다 지우면 클리어(걸린 시간으로 별), 시간이 다 되면 실패 → 광고 보고 시간 더 받아 이어하기.
 /// 둘 곳이 없으면(폭탄도 없으면) 자동으로 섞는다.
 /// </summary>
@@ -686,8 +686,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         bombs.Remove(month);
         RefreshTray();
 
-        var cells = board.CellsOfMonth(month);
-        cells.Sort((p, q) => Dist(p, origin).CompareTo(Dist(q, origin)));
+        var cells = BlastCells(origin);
         float last = 0f;
         Settings.Haptic(90, 255);
         Fx.Shake(shakeRoot, cellW * 0.25f, 0.45f);
@@ -721,6 +720,38 @@ public class GameScreen : MonoBehaviour, IBackHandler
         AnimateSlides(slides, last + 0.25f);
         RefreshBombMarks();
         AfterRemoval(last + 0.45f);
+    }
+
+    /// <summary>
+    /// 폭탄에 터질 칸: 누른 패 1장(뭉친 세 장과 합쳐 그 달이 짝수가 된다) + 가까운 곳부터 고른 같은 달 짝 몇 쌍(달 상관없이).
+    /// 짝 단위로만 지우므로 달마다 남은 장수가 짝수로 유지된다. 다른 폭탄이 걸린 달은 그 폭탄을 쓸 패가 남도록 건드리지 않는다.
+    /// 쌍 수는 판 크기에 따라 2~5쌍 (남은 패 24장마다 1쌍 더).
+    /// </summary>
+    List<Cell> BlastCells(Cell origin)
+    {
+        var result = new List<Cell> { origin };
+        int pairs = Mathf.Clamp(2 + board.CardCount / 24, 2, 5);
+        var near = board.CardCells();
+        near.Remove(origin);
+        near.Sort((p, q) => Dist(p, origin).CompareTo(Dist(q, origin)));
+        var waiting = new Cell?[Board.Months];
+        foreach (var c in near)
+        {
+            if (pairs <= 0) break;
+            int m = Board.Month(board[c]);
+            if (bombs.Contains(m)) continue;
+            if (waiting[m] == null)
+            {
+                waiting[m] = c;
+                continue;
+            }
+            result.Add(waiting[m].Value);
+            result.Add(c);
+            waiting[m] = null;
+            pairs--;
+        }
+        result.Sort((p, q) => Dist(p, origin).CompareTo(Dist(q, origin)));
+        return result;
     }
 
     static float Dist(Cell a, Cell b) => Mathf.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));

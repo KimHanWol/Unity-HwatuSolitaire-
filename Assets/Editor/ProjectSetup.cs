@@ -15,7 +15,7 @@ public static class ProjectSetup
 {
     const string ScenePath = "Assets/Scenes/Main.unity";
     // 기기 홈 화면에 보이는 이름. 게임 안 제목은 App.Title.
-    public const string ProductName = "짝! 화투 솔리테어";
+    public const string ProductName = "화투 짝맞추기";
     const string CompanyName = "LINK_";
     // 스토어에 올린 뒤에는 바꿀 수 없다.
     const string PackageName = "com.kimhanwol.hwatusolitaire";

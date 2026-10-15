@@ -13,8 +13,8 @@ public class App : MonoBehaviour
     public static App I { get; private set; }
 
     /// <summary>게임 이름. 바꾸려면 여기와 ProjectSetup.ProductName.</summary>
-    public static string Title => Loc.T("짝! 화투 솔리테어", "Hwatu Solitaire");
-    public static string Subtitle => Loc.T("층층이 쌓인 화투 짝 맞추기", "Match stacked Korean flower cards");
+    public static string Title => Loc.T("화투 짝맞추기", "Hwatu Solitaire");
+    public static string Subtitle => Loc.T("층층이 쌓인 화투, 같은 달끼리 짝!", "Match stacked Korean flower cards");
 
     public const float RefWidth = 1080f, RefHeight = 1920f;
 
@@ -123,7 +123,8 @@ public class App : MonoBehaviour
         Ui.Stretch(safe);
         screenLayer = Ui.Rect("Screens", safe);
         Ui.Stretch(screenLayer);
-        popupLayer = Ui.Rect("Popups", safe);
+        // 팝업 층은 안전 영역(노치·하단 여백)까지 덮어야 뒤가 고르게 어두워진다. 광고 배너만 빼고 화면 전체.
+        popupLayer = Ui.Rect("Popups", canvasRoot);
         Ui.Stretch(popupLayer);
         var pc = popupLayer.gameObject.AddComponent<Canvas>();
         pc.overrideSorting = true;
@@ -162,6 +163,9 @@ public class App : MonoBehaviour
         safe.anchorMin = new Vector2(s.xMin / Screen.width, bottom / Screen.height);
         safe.anchorMax = new Vector2(s.xMax / Screen.width, s.yMax / Screen.height);
         safe.offsetMin = safe.offsetMax = Vector2.zero;
+        popupLayer.anchorMin = new Vector2(0f, Ads.BannerHeightPixels / Screen.height);
+        popupLayer.anchorMax = Vector2.one;
+        popupLayer.offsetMin = popupLayer.offsetMax = Vector2.zero;
         LayoutChanged?.Invoke();
     }
 

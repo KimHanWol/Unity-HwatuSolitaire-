@@ -22,12 +22,15 @@ public class Sfx : MonoBehaviour
     AudioClip[] combo;
     AudioClip[] star;
     AudioClip stackSlap;
-    AudioClip[] stamp;
+    AudioClip golden;
+    AudioClip blocked;
     AudioClip select, deny, stack, bomb, shuffle, clear, fail, hint, click, tick, slide, revive;
     float lastSnap;
 
     public static void Select() => Play(i => i.select, 0.45f);
     public static void Deny() => Play(i => i.deny, 0.5f);
+    /// <summary>덮인 패를 눌렀을 때: 요란하지 않게, 손끝으로 패를 살짝 건드린 듯한 작고 짧은 "톡".</summary>
+    public static void Blocked() => Play(i => i.blocked, 0.35f);
     /// <summary>쌌다: 박수 짝·짝·짝! 녹음(Resources/Audio/stack_slap)만 울린다. 녹음이 없을 때만 코드로 만든 북·징.</summary>
     public static void Stack()
     {
@@ -42,14 +45,14 @@ public class Sfx : MonoBehaviour
     public static void Tick() => Play(i => i.tick, 0.5f);
     public static void Slide() => Play(i => i.slide, 0.25f);
     public static void Revive() => Play(i => i.revive, 0.7f);
+    public static void Golden() => Play(i => i.golden, 0.9f);
 
-    /// <summary>클리어 창에서 광 하나가 도장처럼 찍힐 때 (0, 1, 2번째로 조금씩 높아진다). 녹음(stamp)이 없으면 종소리.</summary>
+    /// <summary>클리어 창에서 광 하나가 찍힐 때: 밝은 "칭~ 띠링" (0, 1, 2번째로 한 음씩 올라간다).</summary>
     public static void Star(int index)
     {
         if (instance == null) return;
         int i = Mathf.Clamp(index, 0, 2);
-        var clip = instance.stamp[i] != null ? instance.stamp[i] : instance.star[i];
-        instance.PlayClip(clip, instance.stamp[i] != null ? 1f : 0.6f);
+        instance.PlayClip(instance.star[i], 0.8f);
     }
 
     /// <summary>짝을 맞췄을 때. combo는 연속 몇 번째인지(1부터), 높을수록 종소리가 올라간다.</summary>
@@ -108,20 +111,21 @@ public class Sfx : MonoBehaviour
             combo[i] = ToClip("combo" + i, b);
         }
 
+        // 광: 맑은 종 두 음이 빠르게 올라가고(칭-) 높은 반짝임이 흩어진다(띠링~). 광마다 평조 한 음씩 위로.
         star = new AudioClip[3];
+        int[] gwangNotes = { 84, 86, 89 };
         for (int i = 0; i < 3; i++)
         {
-            var b = new float[(int)(0.9f * Rate)];
-            Bell(b, 0f, Freq(84 + i * 4), 0.8f, 0.6f);
-            Bell(b, 0.02f, Freq(96 + i * 4), 0.5f, 0.2f);
-            star[i] = Load(i == 0 ? "star" : "star" + (i + 1), () => ToClip("star" + i, Normalize(b, 0.8f)));
+            int note = gwangNotes[i];
+            star[i] = Load(i == 0 ? "star" : "star" + (i + 1), () => ToClip("star" + note, BuildSparkle(note, 0.9f)));
         }
 
         select = Load("select", BuildSelect);
         deny = Load("deny", BuildDeny);
+        blocked = Load("blocked", BuildBlocked);
         stack = Load("stack", BuildStack);
         stackSlap = Resources.Load<AudioClip>("Audio/stack_slap");
-        stamp = new[] { Resources.Load<AudioClip>("Audio/stamp"), Resources.Load<AudioClip>("Audio/stamp2"), Resources.Load<AudioClip>("Audio/stamp3") };
+        golden = Load("golden", BuildGolden);
         bomb = Load("bomb", BuildBomb);
         shuffle = Load("shuffle", BuildShuffle);
         clear = Load("clear", BuildClear);
@@ -254,6 +258,33 @@ public class Sfx : MonoBehaviour
         return ToClip("snap", Normalize(b, 0.95f));
     }
 
+    /// <summary>반짝이는 "칭~ 띠링": 종 두 음(밑음, 5도 위) + 아주 높은 짧은 종 몇 개가 흩어진다.</summary>
+    float[] BuildSparkle(int note, float seconds)
+    {
+        var b = new float[(int)(seconds * Rate)];
+        Bell(b, 0f, Freq(note), 0.7f, 0.55f);
+        Bell(b, 0.055f, Freq(note + 7), 0.8f, 0.5f);
+        Bell(b, 0.055f, Freq(note + 19), 0.35f, 0.12f);
+        float[] glints = { 0.09f, 0.13f, 0.18f, 0.24f, 0.31f };
+        for (int k = 0; k < glints.Length; k++)
+            Bell(b, glints[k], Freq(note + 24 + (k % 3) * 2 + (k == 4 ? 5 : 0)), 0.18f, 0.12f * (1f - k * 0.15f));
+        return Normalize(b, 0.85f);
+    }
+
+    /// <summary>황금 광(싹쓸이): 반짝임을 두 번 크게, 마지막에 높은 종을 길게.</summary>
+    AudioClip BuildGolden()
+    {
+        var b = new float[(int)(1.8f * Rate)];
+        var a = BuildSparkle(84, 1.2f);
+        var c = BuildSparkle(91, 1.2f);
+        for (int i = 0; i < a.Length; i++) b[i] += a[i] * 0.8f;
+        int off = (int)(0.16f * Rate);
+        for (int i = 0; i < c.Length && i + off < b.Length; i++) b[i + off] += c[i];
+        Bell(b, 0.34f, Freq(103), 1.2f, 0.25f);
+        Bell(b, 0.34f, Freq(96), 1.2f, 0.3f);
+        return ToClip("golden", Normalize(b, 0.9f));
+    }
+
     AudioClip BuildSelect()
     {
         var b = new float[(int)(0.08f * Rate)];
@@ -263,6 +294,19 @@ public class Sfx : MonoBehaviour
             b[i] = Mathf.Sin(2f * Mathf.PI * 1650f * t) * Mathf.Exp(-t / 0.014f) * 0.7f + Noise() * Mathf.Exp(-t / 0.003f) * 0.4f;
         }
         return ToClip("select", Normalize(b, 0.6f));
+    }
+
+    AudioClip BuildBlocked()
+    {
+        // 낮고 부드러운 나무 톡: 짧은 사인 두 개가 빠르게 사라진다 (잡음 없음).
+        var b = new float[(int)(0.07f * Rate)];
+        for (int i = 0; i < b.Length; i++)
+        {
+            float t = i / (float)Rate;
+            float env = Mathf.Min(1f, t * 2000f) * Mathf.Exp(-t / 0.012f);
+            b[i] = env * (Mathf.Sin(2f * Mathf.PI * 520f * t) * 0.8f + Mathf.Sin(2f * Mathf.PI * 1040f * t) * 0.2f);
+        }
+        return ToClip("blocked", Normalize(b, 0.5f));
     }
 
     AudioClip BuildClick()

@@ -85,6 +85,24 @@ public static class Art
 
     public static readonly Color GwangEmpty = new Color(0f, 0f, 0f, 0.28f);
 
+    static Sprite gwangGold;
+
+    /// <summary>황금 광 (싹쓸이로 판을 비웠을 때). 광 개수에는 들어가지 않는 기념 표시. Tools/Cards/gwang_gold.svg.</summary>
+    public static Sprite GwangGold
+    {
+        get
+        {
+            if (gwangGold == null)
+            {
+                var tex = Resources.Load<Texture2D>("Cards/gwang_gold");
+                gwangGold = tex != null
+                    ? Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect)
+                    : Gwang;
+            }
+            return gwangGold;
+        }
+    }
+
     // ------------------------------------------------------------ 거리 함수 그림
     delegate float Sdf(Vector2 p);
 

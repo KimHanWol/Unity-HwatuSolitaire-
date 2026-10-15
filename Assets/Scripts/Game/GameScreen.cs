@@ -49,6 +49,11 @@ public class GameScreen : MonoBehaviour, IBackHandler
     int lastTickSecond = -1;
     readonly List<int> bombs = new List<int>();
     int matches;
+    // 마지막으로 패를 지운 수가 폭탄이었는지 (판을 폭탄으로 비우면 싹쓸이)
+    bool lastWasBomb;
+    // 폭탄 달 패만 남아 폭탄이 저절로 터지는 마무리 중
+    bool finale;
+    bool sweep;
 
     // HUD
     Text stageText, chapterText, timeText;
@@ -341,7 +346,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
 
         if (!board.Free(i))
         {
-            Sfx.Deny();
+            Sfx.Blocked();
             view.Wiggle();
             ShowToast(Loc.T("위에 다른 패가 덮고 있어요", "Covered by another card"));
             return;
@@ -397,6 +402,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         int month = Board.Month(a.Value);
 
         matches++;
+        lastWasBomb = false;
         // 앞서 기다리던 뭉치는 여기서 끝난다.
         FinishPending();
 
@@ -586,10 +592,57 @@ public class GameScreen : MonoBehaviour, IBackHandler
         {
             finished = true;
             running = false;
+            // 폭탄으로 판을 비우면 싹쓸이 → 황금 광
+            sweep = lastWasBomb;
             Anim.Delay(this, delay + 0.25f, Win);
             return;
         }
+        if (!finale && OnlyBombsLeft())
+        {
+            Anim.Delay(this, delay + 0.2f, BombFinale);
+            return;
+        }
         Anim.Delay(this, delay, CheckStuck);
+    }
+
+    /// <summary>판에 남은 패가 모두 폭탄 칸에 있는 달의 패인지.</summary>
+    bool OnlyBombsLeft()
+    {
+        if (bombs.Count == 0 || board.Cleared) return false;
+        foreach (int i in board.PresentTiles())
+            if (!bombs.Contains(Board.Month(board[i]))) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// 폭탄 마무리: 폭탄 달 패만 남으면 누르지 않아도 폭탄이 차례로 저절로 터져 판을 비운다 (→ 싹쓸이).
+    /// 덮인 패도 상관없이 그 달 패를 몽땅 터뜨린다. 그동안 시간은 멈춘다.
+    /// </summary>
+    void BombFinale()
+    {
+        if (finished || !OnlyBombsLeft()) return;
+        finale = true;
+        running = false;
+        ClearHint();
+        if (selected != null) { selected.Selected = false; selected = null; }
+        FinishPending();
+        Fx.Stamp(Loc.T("폭탄 마무리!", "BOMB FINISH!"), Loc.T("남은 패를 한 번에 펑!", "Blasting everything left!"), Art.Gold, Art.RedDark);
+        Sfx.Stack();
+        var months = new List<int>(bombs);
+        for (int k = 0; k < months.Count; k++)
+        {
+            int month = months[k];
+            Anim.Delay(this, 0.9f + k * 0.65f, () =>
+            {
+                if (this == null) return;
+                var tiles = board.TilesOfMonth(month);
+                if (tiles.Count == 0) return;
+                // 위가 드러난 패가 있으면 그 패에서, 없으면 아무 패에서 터진다.
+                int at = tiles.FindIndex(board.Exposed);
+                int origin = at >= 0 ? tiles[at] : tiles[0];
+                Detonate(origin, month, true);
+            });
+        }
     }
 
     bool[] BombMask()
@@ -601,7 +654,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
 
     void CheckStuck()
     {
-        if (finished || board.Cleared) return;
+        if (finished || finale || board.Cleared) return;
         if (Rules.HasMove(board, BombMask())) return;
         if (BombUsable())
         {
@@ -696,8 +749,9 @@ public class GameScreen : MonoBehaviour, IBackHandler
         ShowToast(Loc.T("빛나는 패를 누르면 펑!", "Tap a glowing card to blast!"));
     }
 
-    void Detonate(int origin, int month)
+    void Detonate(int origin, int month, bool wholeMonth = false)
     {
+        lastWasBomb = true;
         ClearHint();
         if (selected != null) { selected.Selected = false; selected = null; }
         int slotIndex = bombs.IndexOf(month);
@@ -722,7 +776,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         }
         RefreshTray();
 
-        var cells = BlastTiles(origin);
+        var cells = wholeMonth ? WholeMonth(origin, month) : BlastTiles(origin);
         float last = 0f;
         Settings.Haptic(90, 255);
         Fx.Shake(shakeRoot, cellW * 0.25f, 0.45f);
@@ -788,6 +842,15 @@ public class GameScreen : MonoBehaviour, IBackHandler
         }
         result.Sort((p, q) => Dist(p, origin).CompareTo(Dist(q, origin)));
         return result;
+    }
+
+    /// <summary>마무리용: 그 달 패를 모두 (누른 자리에서 가까운 순).</summary>
+    List<int> WholeMonth(int origin, int month)
+    {
+        var list = board.TilesOfMonth(month);
+        if (!list.Contains(origin)) list.Add(origin);
+        list.Sort((p, q) => Dist(p, origin).CompareTo(Dist(q, origin)));
+        return list;
     }
 
     /// <summary>두 자리 사이 거리 (패 칸 단위, 층은 무시).</summary>
@@ -958,15 +1021,17 @@ public class GameScreen : MonoBehaviour, IBackHandler
         int stars = revives > 0 ? 1 : def.StarsFor(elapsed);
         int prevBest = Progress.BestSeconds(def.number);
         bool newBest = Progress.Record(def.number, stars, seconds);
+        if (sweep) Progress.SetGolden(def.number);
         Sfx.Clear();
         Settings.Haptic(80, 180);
-        Fx.Confetti(70);
-        Fx.Stamp(Loc.T("클리어!", "CLEAR!"), null, Art.Gold, Art.RedDark, 0f);
+        Fx.Confetti(sweep ? 120 : 70);
+        if (sweep) Fx.Stamp(Loc.T("싹쓸이!", "SWEEP!"), Loc.T("폭탄으로 판을 싹 비웠어요 · 황금 광!", "Bombed the board clean · Golden Gwang!"), Art.Gold, Art.RedDark, -6f);
+        else Fx.Stamp(Loc.T("클리어!", "CLEAR!"), null, Art.Gold, Art.RedDark, 0f);
 
         Anim.Delay(this, 1.1f, () =>
         {
             bool last = def.number >= App.I.Stages.stages.Length;
-            var p = Popup.Open(new Vector2(900f, 1060f), Loc.T("스테이지 ", "Stage ") + def.number + Loc.T(" 클리어", " Clear"));
+            var p = Popup.Open(new Vector2(900f, 990f), Loc.T("스테이지 ", "Stage ") + def.number + Loc.T(" 클리어", " Clear"));
             p.CanClose = false;
             p.OnBackPressed = () => App.I.ShowStages(def.number);
 
@@ -988,12 +1053,35 @@ public class GameScreen : MonoBehaviour, IBackHandler
                 }, 0.25f + i * 0.35f);
             }
 
+            // 싹쓸이: 광 셋 다음에 황금 광이 오른쪽 위에 따로 찍힌다 (광 개수와는 별개).
+            if (sweep)
+            {
+                var gold = Ui.Rect("Golden", p.Panel);
+                Ui.Place(gold, 1f, 1f, new Vector2(150f, 150f), new Vector2(-95f, -110f));
+                var glow = Ui.Image(gold, Art.Glow, new Color(1f, 0.85f, 0.3f, 0.8f), "Glow");
+                Ui.Place(glow.rectTransform, 0.5f, 0.5f, new Vector2(300f, 300f));
+                var coin = Ui.Image(gold, Art.GwangGold, Color.white, "Coin");
+                Ui.Stretch(coin.rectTransform);
+                var tag = Ui.Text(gold, Loc.T("싹쓸이", "Sweep"), 34, Art.RedDark, TextAnchor.MiddleCenter, "Tag");
+                Ui.Place(tag.rectTransform, 0.5f, 0f, new Vector2(200f, 44f), new Vector2(0f, -20f));
+                gold.localScale = Vector3.zero;
+                Anim.Run(gold, 0.45f, t =>
+                {
+                    gold.localScale = Vector3.one * Anim.OutBack(t);
+                    gold.localEulerAngles = new Vector3(0f, 0f, (1f - t) * 180f + 10f);
+                }, () =>
+                {
+                    Sfx.Golden();
+                    Fx.Burst(gold.position, 30, Fx.FireColors, 900f, Art.Star, 0.9f, 34f, -800f);
+                    Anim.Run(glow, 100000f, t => glow.rectTransform.localEulerAngles = new Vector3(0f, 0f, Time.unscaledTime * 40f));
+                }, 0.35f + stars * 0.35f);
+            }
+
             p.Label(Loc.T("걸린 시간  ", "Time  ") + Clock(seconds), 60, Art.Ink, 430f);
             string bestLine = newBest && prevBest > 0 ? Loc.T("새 기록!", "New record!") : Loc.T("최고 기록  ", "Best  ") + Clock(Progress.BestSeconds(def.number));
             p.Label(bestLine, 44, newBest && prevBest > 0 ? Art.Red : Art.GreyDark, 500f);
-            p.Label(Loc.T("3광 ", "3 Gwang ") + Clock(def.star3) + "     " + Loc.T("2광 ", "2 Gwang ") + Clock(def.star2), 40, Art.GreyDark, 560f);
 
-            float y = 690f;
+            float y = 620f;
             if (!last)
             {
                 p.Button(Loc.T("다음 스테이지", "Next Stage"), Art.IconPlay, Art.Green, Art.GreenDark, y, () =>

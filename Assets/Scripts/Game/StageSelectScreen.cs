@@ -151,6 +151,11 @@ public class StageSelectScreen : MonoBehaviour, IBackHandler
                 var s = Ui.Image(face.rectTransform, Art.Gwang, i < stars ? Color.white : new Color(0f, 0f, 0f, 0.12f), "Gwang" + i);
                 Ui.Place(s.rectTransform, 0.5f, 0f, new Vector2(46f, 46f), new Vector2((i - 1) * 48f, 36f));
             }
+            if (Progress.Golden(stage))
+            {
+                var gold = Ui.Image(face.rectTransform, Art.GwangGold, Color.white, "Golden");
+                Ui.Place(gold.rectTransform, 1f, 1f, new Vector2(52f, 52f), new Vector2(-8f, -8f));
+            }
             var button = root.gameObject.AddComponent<Button>();
             button.transition = Selectable.Transition.None;
             button.targetGraphic = face;

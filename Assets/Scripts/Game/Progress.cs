@@ -12,6 +12,7 @@ public static class Progress
     const string BestKey = "BestTimes";
     const string HintKey = "Hints";
     const string LastKey = "LastStage";
+    const string GoldenKey = "Golden";
 
     public const int StartingHints = 3;
     /// <summary>힌트 광고 한 번에 얻는 힌트 수.</summary>
@@ -108,6 +109,32 @@ public static class Progress
         set { PlayerPrefs.SetInt(HintKey, Mathf.Max(0, value)); PlayerPrefs.Save(); }
     }
 
+    /// <summary>싹쓸이로 깬 적이 있으면 황금 광 (광 개수와는 따로).</summary>
+    public static bool Golden(int stage)
+    {
+        string g = PlayerPrefs.GetString(GoldenKey, "");
+        return stage >= 1 && stage <= g.Length && g[stage - 1] == '1';
+    }
+
+    public static void SetGolden(int stage)
+    {
+        var g = PlayerPrefs.GetString(GoldenKey, "").PadRight(StageGenerator.StageCount, '0').ToCharArray();
+        if (stage < 1 || stage > g.Length) return;
+        g[stage - 1] = '1';
+        PlayerPrefs.SetString(GoldenKey, new string(g));
+        PlayerPrefs.Save();
+    }
+
+    public static int TotalGolden
+    {
+        get
+        {
+            int n = 0;
+            foreach (char c in PlayerPrefs.GetString(GoldenKey, "")) if (c == '1') n++;
+            return n;
+        }
+    }
+
     /// <summary>개발용: 모든 스테이지를 연다.</summary>
     public static void UnlockAll()
     {
@@ -122,6 +149,7 @@ public static class Progress
         PlayerPrefs.DeleteKey(StarsKey);
         PlayerPrefs.DeleteKey(BestKey);
         PlayerPrefs.DeleteKey(LastKey);
+        PlayerPrefs.DeleteKey(GoldenKey);
         PlayerPrefs.Save();
         stars = null;
         best = null;

@@ -5,7 +5,7 @@
 //   Casino Audio  https://kenney.nl/assets/casino-audio   (card-place, card-slide, card-shuffle ...)
 //   Impact Sounds https://kenney.nl/assets/impact-sounds  (impactPunch ...)
 //   박수·뺨 치는 소리 (Freesound, 모두 CC0 — 파일 이름은 소리 번호, 한 폴더에 둔다):
-//     232928 bmusic92 "Smacking Face", 539163 khenshom "Slap hit on the face or shoulder", 478657 xUMR "clap.wav"
+//     232928 bmusic92 "Smacking Face" (2.128초 지점의 한 대)
 //     https://freesound.org/s/<번호>/ 에서 받는다 (미리듣기 mp3 로도 충분하다).
 // 사용: node Tools/Audio/make_sfx.js <casino 폴더> <impact 폴더> <박수·뺨 소리 폴더>   (ffmpeg 필요)
 //
@@ -136,21 +136,14 @@ function snap(name, id, at, opts = {}) {
   write(name, finish(x, opts.drive ?? 2.2, -1.6)); // 압축(ogg) 뒤 최고점이 0dB를 넘지 않게 여유
   return x;
 }
-snap('snap', '232928', 2.128);   // 가장 밝은 뺨 소리 (평균 6.2kHz)
-snap('snap2', '539163', 0.184);  // 손바닥으로 탁 (4.8kHz)
-snap('snap3', '232928', 5.098);  // 같은 녹음의 다른 한 대 (5.0kHz)
+// 세 가지 모두 같은 한 대(가장 밝은 뺨 소리)로 만들고 음높이만 아주 살짝 다르게 한다.
+// (다른 녹음을 섞어 쓰면 결이 달라 가끔 이상하게 들린다.)
+snap('snap', '232928', 2.128, { rate: 1.05 });
+snap('snap2', '232928', 2.128, { rate: 1.03 });
+snap('snap3', '232928', 2.128, { rate: 1.07 });
 
 // ------------------------------------------------------------ 쌌다: 한 번만, 짝보다 크고 조금 길게 (쿵 없이)
 snap('stack_slap', '232928', 2.128, { shelf: 4, rate: 1.0, len: 0.24, hold: 0.025, tau: 0.05, punch: 2.0, drive: 2.8 });
-
-// ------------------------------------------------------------ 광 (클리어 창에서 광이 하나씩 찍힐 때): 칩·동전이 차르륵 쌓이는 소리
-// 점수를 따는 느낌. 광이 찍힐수록 조금씩 높아진다.
-[['stamp', 'chips-stack-1.ogg', 1.0], ['stamp2', 'chips-stack-3.ogg', 1.06], ['stamp3', 'chips-stack-2.ogg', 1.12]].forEach(([name, file, rate]) => {
-  let x = decode(find(CASINO, file), 'highpass=f=400,silenceremove=start_periods=1:start_threshold=-45dB');
-  x = speed(x, rate);
-  x = x.slice(0, Math.round(0.4 * SR));
-  write(name, finish(envelope(x, 0.2, 0.1), 1.2, -1.5));
-});
 
 // ------------------------------------------------------------ 패 집기: 카드를 살짝 미는 소리 앞부분
 {

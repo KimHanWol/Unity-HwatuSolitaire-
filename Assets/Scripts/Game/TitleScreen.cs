@@ -43,8 +43,8 @@ public class TitleScreen : MonoBehaviour, IBackHandler
         glow.transform.SetSiblingIndex(0);
 
         // 제목
-        // 한글 이름은 "솔리테어"가 낯설어서 누구나 아는 "짝맞추기"로 (영어권은 Solitaire 가 익숙하다).
-        string main = Loc.T("화투 짝맞추기", "Hwatu Solitaire");
+        // 한글 이름은 한국에서 마작 패 맞추기를 두루 이르는 "사천성"으로 (영어권은 Solitaire 가 익숙하다).
+        string main = Loc.T("화투 사천성", "Hwatu Solitaire");
         var title = Ui.Text(rt, main, Loc.Korean ? 140 : 116, Art.Gold, TextAnchor.MiddleCenter, "Title");
         Ui.Place(title.rectTransform, 0.5f, 0.47f, new Vector2(1060f, 190f));
         Ui.Outline(title, Art.WoodDark, 7f);

@@ -13,7 +13,7 @@ public class App : MonoBehaviour
     public static App I { get; private set; }
 
     /// <summary>게임 이름. 바꾸려면 여기와 ProjectSetup.ProductName.</summary>
-    public static string Title => Loc.T("화투 짝맞추기", "Hwatu Solitaire");
+    public static string Title => Loc.T("화투 사천성", "Hwatu Solitaire");
     public static string Subtitle => Loc.T("층층이 쌓인 화투, 같은 달끼리 짝!", "Match stacked Korean flower cards");
 
     public const float RefWidth = 1080f, RefHeight = 1920f;

@@ -60,8 +60,10 @@ public class GameScreen : MonoBehaviour, IBackHandler
     Image[][] trayFanCards;
     // 폭탄 칸마다 뭉친 세 장의 패 번호 (bombs와 같은 순서)
     readonly List<int[]> bombCards = new List<int[]>();
-    static readonly float[] FanAngles = { 16f, 0f, -16f };
-    static readonly float[] FanOffsets = { -16f, 0f, 16f };
+    static readonly float[] FanAngles = { 6f, -6f, 0f }; // 맨 앞(마지막) 장은 빈 칸에 똑바로
+    static readonly float[] FanOffsets = { -4f, 4f, 0f };
+    // 기울인 뒤쪽 두 장은 모서리가 칸 아래로 처지지 않게 조금 올린다.
+    static readonly float[] FanLift = { 5f, 5f, 0f };
     Text hintCount;
     Image hintAd;
     RectTransform hintButton;
@@ -199,10 +201,10 @@ public class GameScreen : MonoBehaviour, IBackHandler
         for (int i = 0; i < MaxBombs; i++)
         {
             var slot = Ui.Rect("Slot" + i, tray);
-            Ui.Place(slot, 0.5f, 0.5f, new Vector2(88f, 143f), new Vector2((i - 1) * 165f, -12f));
+            Ui.Place(slot, 0.5f, 0.5f, new Vector2(88f, 143f), new Vector2((i - 1) * 165f, -6f));
             var empty = Ui.Image(slot, Art.RoundSmall, new Color(1f, 1f, 1f, 0.12f), "Empty");
             Ui.Stretch(empty.rectTransform);
-            // 뭉친 세 장을 부채처럼 살짝 벌려 보여 준다 (아래쪽 가운데를 축으로).
+            // 뭉친 세 장을 빈 칸에 맞춰 겹쳐 놓고, 아래쪽 가운데를 축으로 살짝만 벌려 세 장임을 보여 준다.
             var fan = Ui.Rect("Fan", slot);
             Ui.Stretch(fan);
             trayFanCards[i] = new Image[3];
@@ -211,9 +213,9 @@ public class GameScreen : MonoBehaviour, IBackHandler
                 var c = Ui.Image(fan, null, Color.white, "Card" + k);
                 var crt = c.rectTransform;
                 crt.anchorMin = crt.anchorMax = new Vector2(0.5f, 0f);
-                crt.pivot = new Vector2(0.5f, 0.08f);
-                crt.sizeDelta = new Vector2(74f, 74f * Art.CardAspect);
-                crt.anchoredPosition = new Vector2(FanOffsets[k], 18f);
+                crt.pivot = new Vector2(0.5f, 0f);
+                crt.sizeDelta = new Vector2(88f, 143f); // 아래 빈 칸과 같은 크기
+                crt.anchoredPosition = new Vector2(FanOffsets[k], FanLift[k]);
                 crt.localEulerAngles = new Vector3(0f, 0f, FanAngles[k]);
                 trayFanCards[i][k] = c;
             }
@@ -569,7 +571,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
                     for (int k = 0; k < 3; k++)
                     {
                         cards[k].rectTransform.localEulerAngles = new Vector3(0f, 0f, FanAngles[k] * open);
-                        cards[k].rectTransform.anchoredPosition = new Vector2(FanOffsets[k] * open, 18f);
+                        cards[k].rectTransform.anchoredPosition = new Vector2(FanOffsets[k] * open, FanLift[k] * open);
                     }
                 });
                 Fx.Flash(fan.position, 300f, new Color(1f, 0.6f, 0.2f, 0.9f), 0.5f);
@@ -682,7 +684,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
                 var c = trayFanCards[i][k];
                 c.sprite = Art.Card(bombCards[i][k]);
                 c.rectTransform.localEulerAngles = new Vector3(0f, 0f, FanAngles[k]);
-                c.rectTransform.anchoredPosition = new Vector2(FanOffsets[k], 18f);
+                c.rectTransform.anchoredPosition = new Vector2(FanOffsets[k], FanLift[k]);
             }
         }
     }

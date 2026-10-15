@@ -34,8 +34,8 @@ public class StageSelectScreen : MonoBehaviour, IBackHandler
         var title = Ui.Text(top, Loc.T("스테이지", "Stages"), 68, Color.white, TextAnchor.MiddleCenter, "Title");
         Ui.Place(title.rectTransform, 0.5f, 0.5f, new Vector2(500f, 100f));
         Ui.Outline(title, Art.WoodDark, 4f);
-        var starIcon = Ui.Image(top, Art.Star, Art.Gold, "Star");
-        Ui.Place(starIcon.rectTransform, 1f, 0.5f, new Vector2(60f, 60f), new Vector2(-250f, 0f));
+        var starIcon = Ui.Image(top, Art.Gwang, Color.white, "Gwang");
+        Ui.Place(starIcon.rectTransform, 1f, 0.5f, new Vector2(66f, 66f), new Vector2(-250f, 0f));
         var starText = Ui.Text(top, Progress.TotalStars + "/" + (App.I.Stages.stages.Length * 3), 46, Color.white, TextAnchor.MiddleLeft, "Stars");
         Ui.Place(starText.rectTransform, 1f, 0.5f, new Vector2(200f, 80f), new Vector2(-110f, 0f));
 
@@ -115,8 +115,10 @@ public class StageSelectScreen : MonoBehaviour, IBackHandler
         Ui.Place(name.rectTransform, 0f, 0.5f, new Vector2(600f, 90f), new Vector2(230f + 300f, 22f));
         Ui.Outline(name, Color.Lerp(c, Color.black, 0.55f), 3f);
         int got = Progress.ChapterStars(chapter);
-        var stars = Ui.Text(band.rectTransform, "★ " + got + " / " + StageGenerator.StagesPerChapter * 3, 42, Art.Gold, TextAnchor.MiddleLeft, "Stars");
-        Ui.Place(stars.rectTransform, 0f, 0.5f, new Vector2(600f, 60f), new Vector2(230f + 300f, -45f));
+        var gwangIcon = Ui.Image(band.rectTransform, Art.Gwang, open ? Color.white : new Color(0.7f, 0.7f, 0.7f), "Gwang");
+        Ui.Place(gwangIcon.rectTransform, 0f, 0.5f, new Vector2(50f, 50f), new Vector2(256f, -45f));
+        var stars = Ui.Text(band.rectTransform, got + " / " + StageGenerator.StagesPerChapter * 3, 42, Art.Gold, TextAnchor.MiddleLeft, "Stars");
+        Ui.Place(stars.rectTransform, 0f, 0.5f, new Vector2(600f, 60f), new Vector2(290f + 300f, -45f));
         Ui.Outline(stars, Color.Lerp(c, Color.black, 0.55f), 2f);
         if (!open)
         {
@@ -146,8 +148,8 @@ public class StageSelectScreen : MonoBehaviour, IBackHandler
             num.rectTransform.offsetMin = new Vector2(0f, 30f);
             for (int i = 0; i < 3; i++)
             {
-                var s = Ui.Image(face.rectTransform, Art.Star, i < stars ? Art.Gold : new Color(0f, 0f, 0f, 0.15f), "Star" + i);
-                Ui.Place(s.rectTransform, 0.5f, 0f, new Vector2(i == 1 ? 46f : 40f, i == 1 ? 46f : 40f), new Vector2((i - 1) * 46f, i == 1 ? 38f : 34f));
+                var s = Ui.Image(face.rectTransform, Art.Gwang, i < stars ? Color.white : new Color(0f, 0f, 0f, 0.12f), "Gwang" + i);
+                Ui.Place(s.rectTransform, 0.5f, 0f, new Vector2(46f, 46f), new Vector2((i - 1) * 48f, 36f));
             }
             var button = root.gameObject.AddComponent<Button>();
             button.transition = Selectable.Transition.None;

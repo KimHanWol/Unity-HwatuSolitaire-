@@ -14,7 +14,7 @@ namespace HwatuSolitaire.Core
     ///  ③ 모양 구멍(1~2장 이후, 중력 없는 판에서만)
     ///  ④ 중력(3장부터): 패를 지우면 남은 패가 한쪽으로 쏠린다
     ///  ⑤ 막힌 칸(5장부터): 지울 수 없는 뒤집힌 패가 길을 막는다
-    ///  ⑥ 콤보 인정 시간이 조금씩 짧아진다
+    ///  ⑥ "쌌다" 시간(짝 뒤 셋째 패를 얹을 수 있는 시간)이 2.0초 → 1.2초로 짧아진다
     /// </summary>
     public static class StageGenerator
     {
@@ -45,7 +45,7 @@ namespace HwatuSolitaire.Core
             public bool[] Hole;      // true면 처음부터 빈칸
             public bool[] Blocked;   // true면 막힌 칸
             public int MonthCount;
-            public float ComboWindow;
+            public float StackWindow;
             public string Shape = "rect";
         }
 
@@ -98,9 +98,9 @@ namespace HwatuSolitaire.Core
             int months = chapter == 0 ? full : full + chapter / 2 + (int)(p * 2);
             plan.MonthCount = Math.Max(2, Math.Min(Math.Min(Board.Months, pairsTotal), months));
 
-            // ⑥ 콤보 인정 시간 4.0초 → 3.0초
+            // ⑥ 쌌다 시간 2.0초 → 1.2초
             float t = (number - 1) / (float)(StageCount - 1);
-            plan.ComboWindow = (float)Math.Round(4.0 - t * 1.0, 1);
+            plan.StackWindow = (float)Math.Round(2.0 - t * 0.8, 2);
             return plan;
         }
 
@@ -246,7 +246,7 @@ namespace HwatuSolitaire.Core
                 height = plan.Height,
                 cells = best.ToArray(),
                 gravity = (int)plan.Gravity,
-                comboWindow = plan.ComboWindow,
+                stackWindow = plan.StackWindow,
             };
         }
 

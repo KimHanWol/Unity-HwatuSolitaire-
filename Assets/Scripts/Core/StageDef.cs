@@ -23,8 +23,8 @@ namespace HwatuSolitaire.Core
         public int star2;
         /// <summary>제한 시간(초). 넘기면 실패.</summary>
         public int timeLimit;
-        /// <summary>짝을 맞춘 뒤 이 시간(초) 안에 다음 짝을 맞춰야 연속(콤보)으로 친다.</summary>
-        public float comboWindow;
+        /// <summary>짝을 맞춘 뒤 두 장이 포개져 있는 시간(초). 이 안에 같은 달 셋째 패를 누르면 "쌌다".</summary>
+        public float stackWindow;
         /// <summary>모의 풀이로 잰 예상 시간(초). 참고용.</summary>
         public float simSeconds;
 

@@ -4,11 +4,13 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 게임 화면. 위: 일시정지·스테이지 이름·남은 시간과 별 기준. 가운데: 판. 아래: 쌌다(폭탄) 칸·콤보·힌트.
+/// 게임 화면. 위: 일시정지·스테이지 이름·남은 시간과 별 기준. 가운데: 판. 아래: 쌌다(폭탄) 칸·힌트.
 ///
 /// 규칙: 같은 달 화투 두 장을 꺾임 2번 이하의 선(빈칸·판 바깥만 지남)으로 이으면 "짝!" 하고 사라진다.
-/// 콤보: 짝을 맞춘 뒤 comboWindow초 안에 또 맞추면 연속. 3연속마다 "쌌다!" → 마지막에 맞춘 달이 폭탄이 되어 아래 칸에 모인다.
-/// 폭탄이 걸린 달의 패를 아무거나 하나 누르면 그 달 패가 판에서 한꺼번에 펑 터진다 (선 연결 필요 없음).
+/// 쌌다: 짝을 맞추면 두 장이 그 자리에 잠깐(stackWindow초, 고리 시간) 포개져 있다. 그 사이에 같은 달 패를 하나 더 누르면
+/// 고스톱처럼 세 장이 뭉쳐 "쌌다!" → 그 뭉치가 아래 폭탄 칸으로 간다 (최대 3뭉치, 셋째 패는 선 연결 필요 없음).
+/// 폭탄: 폭탄 칸에 있는 달의 패를 판에서 아무거나 하나 누르면 뭉치와 판의 그 달 패가 한꺼번에 펑 터진다.
+/// (달마다 장수가 짝수라 셋을 빼면 판에 홀수 장이 남는데, 폭탄이 그 달을 몽땅 지우므로 판은 항상 끝까지 풀린다.)
 /// 시간 안에 다 지우면 클리어(걸린 시간으로 별), 시간이 다 되면 실패 → 광고 보고 시간 더 받아 이어하기.
 /// 둘 곳이 없으면(폭탄도 없으면) 자동으로 섞는다.
 /// </summary>
@@ -34,15 +36,22 @@ public class GameScreen : MonoBehaviour, IBackHandler
     float elapsed, bonusTime;
     bool running, finished;
     int revives;
-    int combo;
-    float lastMatchAt = -100f;
+    // 짝을 맞춘 뒤 셋째 패를 기다리는 뭉치 (없으면 pending == null)
+    class Pending
+    {
+        public int month;
+        public float left;
+        public CardView a, b;
+        public Image ring;
+    }
+    Pending pending;
     int lastTickSecond = -1;
     readonly List<int> bombs = new List<int>();
     int matches;
 
     // HUD
-    Text stageText, chapterText, timeText, comboText;
-    Image timeFill, comboRing;
+    Text stageText, chapterText, timeText;
+    Image timeFill;
     Image[] hudStars;
     RectTransform[] starMarks;
     RectTransform timerBar;
@@ -50,7 +59,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
     Image[] trayCards;
     Text hintCount;
     Image hintAd;
-    RectTransform comboRoot;
     RectTransform hintButton;
     Text toast;
 
@@ -126,12 +134,12 @@ public class GameScreen : MonoBehaviour, IBackHandler
             }
         }
 
-        // 오른쪽 위: 별 3개 (지금 속도면 몇 개인지)
+        // 오른쪽 위: 광 3개 (지금 속도면 몇 광인지)
         hudStars = new Image[3];
         for (int i = 0; i < 3; i++)
         {
-            var s = Ui.Image(top, Art.Star, Art.Gold, "HudStar" + i);
-            Ui.Place(s.rectTransform, 1f, 0.5f, new Vector2(64f, 64f), new Vector2(-200f + i * 66f, 0f));
+            var s = Ui.Image(top, Art.Gwang, Color.white, "HudGwang" + i);
+            Ui.Place(s.rectTransform, 1f, 0.5f, new Vector2(70f, 70f), new Vector2(-206f + i * 70f, 0f));
             hudStars[i] = s;
         }
 
@@ -156,23 +164,23 @@ public class GameScreen : MonoBehaviour, IBackHandler
         starMarks = new RectTransform[2];
         for (int i = 0; i < 2; i++)
         {
-            var m = Ui.Image(timerBar, Art.Star, Color.white, "Mark" + i);
+            var m = Ui.Image(timerBar, Art.Gwang, Color.white, "Mark" + i);
             m.rectTransform.anchorMin = m.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-            m.rectTransform.sizeDelta = new Vector2(46f, 46f);
+            m.rectTransform.sizeDelta = new Vector2(52f, 52f);
             starMarks[i] = m.rectTransform;
         }
         timeText = Ui.Text(timer, "0:00", 54, Color.white, TextAnchor.MiddleCenter, "Time");
         Ui.Place(timeText.rectTransform, 1f, 0.5f, new Vector2(180f, 80f), new Vector2(-100f, 0f));
         Ui.Outline(timeText, Art.WoodDark, 3f);
 
-        // 아래 띠: 쌌다 칸 / 콤보 / 힌트
+        // 아래 띠: 쌌다 칸 / 힌트
         var bottom = Ui.Rect("Bottom", rt);
         bottom.anchorMin = new Vector2(0f, 0f);
         bottom.anchorMax = new Vector2(1f, 0f);
         bottom.pivot = new Vector2(0.5f, 0f);
         bottom.sizeDelta = new Vector2(0f, BottomBar);
         var tray = Ui.Rect("Tray", bottom);
-        Ui.Place(tray, 0f, 0.5f, new Vector2(470f, 200f), new Vector2(270f, 0f));
+        Ui.Place(tray, 0f, 0.5f, new Vector2(560f, 200f), new Vector2(320f, 0f));
         var trayBg = Ui.Image(tray, Art.Round, new Color(0f, 0f, 0f, 0.35f), "Bg");
         Ui.Stretch(trayBg.rectTransform);
         var trayEdge = Ui.Image(tray, Art.RoundOutline, new Color(Art.Gold.r, Art.Gold.g, Art.Gold.b, 0.6f), "Edge");
@@ -185,7 +193,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         for (int i = 0; i < MaxBombs; i++)
         {
             var slot = Ui.Rect("Slot" + i, tray);
-            Ui.Place(slot, 0.5f, 0.5f, new Vector2(88f, 143f), new Vector2((i - 1) * 140f, -12f));
+            Ui.Place(slot, 0.5f, 0.5f, new Vector2(88f, 143f), new Vector2((i - 1) * 165f, -12f));
             var empty = Ui.Image(slot, Art.RoundSmall, new Color(1f, 1f, 1f, 0.12f), "Empty");
             Ui.Stretch(empty.rectTransform);
             var card = Ui.Image(slot, null, Color.white, "Card");
@@ -203,22 +211,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
             btn.onClick.AddListener(() => PeekBomb(index));
         }
 
-        comboRoot = Ui.Rect("Combo", bottom);
-        Ui.Place(comboRoot, 0.5f, 0.5f, new Vector2(170f, 170f), new Vector2(140f, 0f));
-        var comboBg = Ui.Image(comboRoot, Art.Circle128, new Color(0f, 0f, 0f, 0.35f), "Bg");
-        Ui.Stretch(comboBg.rectTransform);
-        comboRing = Ui.Image(comboRoot, Art.Ring, Art.Gold, "Ring");
-        Ui.Stretch(comboRing.rectTransform);
-        comboRing.type = Image.Type.Filled;
-        comboRing.fillMethod = Image.FillMethod.Radial360;
-        comboRing.fillOrigin = (int)Image.Origin360.Top;
-        comboRing.fillClockwise = false;
-        comboRing.fillAmount = 0f;
-        comboText = Ui.Text(comboRoot, "", 58, Color.white, TextAnchor.MiddleCenter, "Text");
-        Ui.Stretch(comboText.rectTransform);
-        Ui.Outline(comboText, Art.WoodDark, 3f);
-        var comboLabel = Ui.Text(comboRoot, Loc.T("연속", "COMBO"), 28, Art.Gold, TextAnchor.MiddleCenter, "Label");
-        Ui.Place(comboLabel.rectTransform, 0.5f, 0f, new Vector2(200f, 40f), new Vector2(0f, 4f));
 
         var hintBtn = Ui.Button(bottom, new Vector2(220f, 180f), Art.Blue, Art.BlueDark, Loc.T("힌트", "Hint"), Art.IconBulb, OnHint, 46, "Hint");
         hintButton = (RectTransform)hintBtn.transform;
@@ -332,6 +324,16 @@ public class GameScreen : MonoBehaviour, IBackHandler
             return;
         }
 
+        if (pending != null && pending.month == month)
+        {
+            if (bombs.Count < MaxBombs)
+            {
+                StackThird(view);
+                return;
+            }
+            ShowToast(Loc.T("폭탄 칸이 꽉 찼어요! 폭탄부터 쓰세요", "Bomb tray is full! Use a bomb first"));
+        }
+
         if (selected == null)
         {
             Select(view);
@@ -383,18 +385,29 @@ public class GameScreen : MonoBehaviour, IBackHandler
         views[b.Cell.X, b.Cell.Y] = null;
         int month = Board.Month(a.Value);
 
-        combo = elapsed - lastMatchAt <= def.comboWindow ? combo + 1 : 1;
-        lastMatchAt = elapsed;
         matches++;
-        int thisCombo = combo;
+        // 앞서 기다리던 뭉치는 여기서 끝난다.
+        FinishPending();
 
         DrawPath(path, new Color(1f, 0.86f, 0.3f), 0.35f);
 
         // a를 들어 b 위로 "짝!" 내리친다.
         a.Rt.SetAsLastSibling();
         b.Rt.SetSiblingIndex(boardRoot.childCount - 2);
+        NoHit(a);
+        NoHit(b);
         Vector2 from = a.Rt.anchoredPosition, to = b.Rt.anchoredPosition;
         const float fly = 0.15f;
+
+        var slides = Rules.Remove(board, a.Cell, b.Cell, gravity);
+        // 판에 같은 달이 더 남아 있으면 두 장이 잠깐 포개져 셋째 패를 기다린다.
+        Pending p = null;
+        if (board.CountMonth(month) > 0 && def.stackWindow > 0f)
+        {
+            p = new Pending { month = month, left = def.stackWindow + fly, a = a, b = b };
+            pending = p;
+        }
+
         Anim.Run(a.Rt, fly, t =>
         {
             float e = Anim.InCubic(t);
@@ -403,29 +416,138 @@ public class GameScreen : MonoBehaviour, IBackHandler
             a.Rt.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(0f, -12f, t));
         }, () =>
         {
-            Sfx.Snap(thisCombo);
+            Sfx.Snap(1);
             Settings.Haptic(18, 120);
             Vector3 hitWorld = b.Rt.position;
             Fx.Flash(hitWorld, cellW * 3.2f, new Color(1f, 0.95f, 0.7f, 0.9f), 0.3f);
-            Fx.Burst(hitWorld, 10 + Mathf.Min(thisCombo, 6) * 2, Fx.FlowerColors, 900f, Art.Petal, 0.7f, cellW * 0.35f);
-            Fx.PopText(hitWorld, ComboWord(thisCombo), thisCombo >= 3 ? 96 : 84, Color.white, thisCombo >= 2 ? Art.Red : Art.WoodDark, 130f);
-            Vanish(a, 0.18f);
-            Vanish(b, 0.18f);
+            Fx.Burst(hitWorld, 12, Fx.FlowerColors, 900f, Art.Petal, 0.7f, cellW * 0.35f);
+            Fx.PopText(hitWorld, Loc.T("짝!", "Snap!"), 84, Color.white, Art.WoodDark, 130f);
+            if (p != null && pending == p) ShowPendingRing(p);
+            else if (p == null)
+            {
+                Vanish(a, 0.18f);
+                Vanish(b, 0.18f);
+            }
         });
 
-        var slides = Rules.Remove(board, a.Cell, b.Cell, gravity);
         AnimateSlides(slides, fly + 0.06f);
-
-        if (thisCombo >= 3 && thisCombo % 3 == 0) Anim.Delay(this, fly + 0.1f, () => Stack(month));
         AfterRemoval(fly + 0.3f);
     }
 
-    static string ComboWord(int c)
+    static void NoHit(CardView v)
     {
-        if (c <= 1) return Loc.T("짝!", "Snap!");
-        if (c == 2) return Loc.T("짝짝!", "Snap Snap!");
-        if (c % 3 == 0) return Loc.T("쌌다!", "Stacked!");
-        return Loc.T("짝 ×", "Snap ×") + c;
+        var img = v.GetComponent<Image>();
+        if (img != null) img.raycastTarget = false;
+    }
+
+    /// <summary>포개진 두 장 둘레에 줄어드는 금빛 고리 (셋째 패를 누를 수 있는 남은 시간).</summary>
+    void ShowPendingRing(Pending p)
+    {
+        if (p.b == null) return;
+        p.a.Rt.localEulerAngles = new Vector3(0f, 0f, -10f);
+        p.a.Rt.localScale = Vector3.one * 0.92f;
+        p.b.Rt.localScale = Vector3.one * 0.92f;
+        var ring = Ui.Image(boardRoot, Art.Ring, new Color(1f, 0.8f, 0.25f, 0.95f), "StackRing");
+        Ui.Place(ring.rectTransform, 0.5f, 0.5f, Vector2.one * cellH * 1.25f, p.b.Rt.anchoredPosition);
+        ring.type = Image.Type.Filled;
+        ring.fillMethod = Image.FillMethod.Radial360;
+        ring.fillOrigin = (int)Image.Origin360.Top;
+        ring.fillClockwise = false;
+        p.ring = ring;
+    }
+
+    /// <summary>기다리던 뭉치를 정리한다 (시간이 다 됐거나 다른 짝을 맞췄을 때): 두 장이 그냥 사라진다.</summary>
+    void FinishPending()
+    {
+        if (pending == null) return;
+        var p = pending;
+        pending = null;
+        if (p.ring != null) Destroy(p.ring.gameObject);
+        if (p.a != null) Vanish(p.a, 0.18f);
+        if (p.b != null) Vanish(p.b, 0.18f);
+    }
+
+    void UpdatePending(float dt)
+    {
+        if (pending == null) return;
+        pending.left -= dt;
+        if (pending.ring != null)
+        {
+            float k = Mathf.Clamp01(pending.left / def.stackWindow);
+            pending.ring.fillAmount = k;
+            pending.ring.color = k < 0.35f ? Color.Lerp(Art.Red, Art.Gold, 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 20f)) : new Color(1f, 0.8f, 0.25f, 0.95f);
+            // 포개진 패가 들썩여서 "한 장 더 얹을 수 있다"는 느낌을 준다.
+            if (pending.b != null) pending.b.Rt.localScale = Vector3.one * (0.92f + 0.03f * Mathf.Sin(Time.unscaledTime * 14f));
+        }
+        if (pending.left <= 0f) FinishPending();
+    }
+
+    /// <summary>포개진 두 장 위로 같은 달 셋째 패를 얹는다: "쌌다!" 세 장이 뭉쳐 폭탄 칸으로 날아간다.</summary>
+    void StackThird(CardView third)
+    {
+        var p = pending;
+        pending = null;
+        ClearHint();
+        if (selected != null) { selected.Selected = false; selected = null; }
+        if (p.ring != null) Destroy(p.ring.gameObject);
+
+        views[third.Cell.X, third.Cell.Y] = null;
+        board[third.Cell] = Board.Empty;
+        NoHit(third);
+        third.Rt.SetAsLastSibling();
+        var slides = Gravity.Apply(board, gravity);
+
+        bombs.Add(p.month);
+        int slot = Mathf.Min(bombs.Count - 1, MaxBombs - 1);
+        Vector2 from = third.Rt.anchoredPosition;
+        Vector2 to = p.b != null ? p.b.Rt.anchoredPosition : from;
+        const float fly = 0.16f;
+        Anim.Run(third.Rt, fly, t =>
+        {
+            third.Rt.anchoredPosition = Vector2.Lerp(from, to, Anim.InCubic(t)) + Vector2.up * Mathf.Sin(t * Mathf.PI) * cellH * 0.4f;
+            third.Rt.localScale = Vector3.one * (1f + 0.3f * Mathf.Sin(t * Mathf.PI));
+            third.Rt.localEulerAngles = new Vector3(0f, 0f, Mathf.Lerp(0f, 10f, t));
+        }, () =>
+        {
+            Vector3 w = third.Rt.position;
+            Sfx.Snap(1);
+            Sfx.Stack();
+            Settings.Haptic(60, 200);
+            Fx.Flash(w, cellW * 4.5f, new Color(1f, 0.7f, 0.25f, 1f), 0.45f);
+            Fx.Ring(w, new Color(1f, 0.8f, 0.3f, 0.9f), cellW * 4f, 0.4f);
+            Fx.Burst(w, 20, Fx.FireColors, 1000f, Art.Spark, 0.6f, cellW * 0.3f, -900f);
+            Fx.Stamp(Loc.T("쌌다!", "STACKED!"), Art.MonthName(p.month) + Loc.T(" 폭탄! 같은 달 패를 누르면 펑", " bomb! Tap that month to blast"), Art.Gold, Art.RedDark);
+
+            // 세 장 뭉치가 폭탄 칸으로 날아간다.
+            var pile = new List<CardView> { third };
+            if (p.a != null) pile.Add(p.a);
+            if (p.b != null) pile.Add(p.b);
+            Vector3 target = traySlots[slot].position;
+            for (int i = 0; i < pile.Count; i++)
+            {
+                var v = pile[i];
+                Vector3 start = Vector3.zero, startScale = Vector3.one;
+                bool began = false;
+                Anim.Run(v.Rt, 0.4f, t =>
+                {
+                    if (!began) { began = true; start = v.Rt.position; startScale = v.Rt.localScale; }
+                    float e = Anim.InOutCubic(t);
+                    v.Rt.position = Vector3.Lerp(start, target, e);
+                    v.Rt.localScale = startScale * Mathf.Lerp(1f, 0.6f, e);
+                }, () => Destroy(v.gameObject), 0.35f + i * 0.05f);
+            }
+            Anim.Delay(this, 0.85f, () =>
+            {
+                RefreshTray();
+                var card = trayCards[slot];
+                Anim.Run(card, 0.45f, t => card.rectTransform.localScale = Vector3.one * Anim.OutElastic(t));
+                Fx.Flash(card.rectTransform.position, 300f, new Color(1f, 0.6f, 0.2f, 0.9f), 0.5f);
+            });
+        });
+
+        RefreshBombMarks();
+        AnimateSlides(slides, fly + 0.06f);
+        AfterRemoval(fly + 0.3f);
     }
 
     void Vanish(CardView v, float duration)
@@ -516,48 +638,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         RefreshBombMarks();
     }
 
-    // ------------------------------------------------------------ 쌌다 / 폭탄
-    void Stack(int month)
-    {
-        if (finished) return;
-        int pick = -1;
-        if (bombs.Count < MaxBombs)
-        {
-            if (board.CountMonth(month) > 0 && !bombs.Contains(month)) pick = month;
-            else
-            {
-                int best = 0;
-                for (int m = 0; m < Board.Months; m++)
-                {
-                    int c = board.CountMonth(m);
-                    if (c > best && !bombs.Contains(m)) { best = c; pick = m; }
-                }
-            }
-        }
-
-        Sfx.Stack();
-        Settings.Haptic(60, 200);
-        if (pick < 0)
-        {
-            // 폭탄 칸이 꽉 찼거나 걸 달이 없으면 시간 보너스
-            bonusTime += 5f;
-            Fx.Stamp(Loc.T("쌌다!", "STACKED!"), Loc.T("+5초 보너스", "+5 sec bonus"), Art.Gold, Art.RedDark);
-            return;
-        }
-        bombs.Add(pick);
-        Fx.Stamp(Loc.T("쌌다!", "STACKED!"), Art.MonthName(pick) + Loc.T(" 폭탄 준비! 그 패를 눌러요", " bomb ready! Tap that card"), Art.Gold, Art.RedDark);
-
-        // 판의 그 달 패에서 빛이 날아가 폭탄 칸에 들어간다.
-        int slot = bombs.Count - 1;
-        RefreshTray();
-        var card = trayCards[slot];
-        Anim.Run(card, 0.45f, t => card.rectTransform.localScale = Vector3.one * Anim.OutElastic(t));
-        Fx.Flash(traySlots[slot].position, 300f, new Color(1f, 0.6f, 0.2f, 0.9f), 0.5f);
-        RefreshBombMarks();
-        // 폭탄이 생기면 막혔다고 섞지 않아도 될 수 있으니 다시 본다.
-        CheckStuck();
-    }
-
+    // ------------------------------------------------------------ 폭탄
     void RefreshTray()
     {
         for (int i = 0; i < MaxBombs; i++)
@@ -587,6 +668,21 @@ public class GameScreen : MonoBehaviour, IBackHandler
     {
         ClearHint();
         if (selected != null) { selected.Selected = false; selected = null; }
+        int slotIndex = bombs.IndexOf(month);
+        if (slotIndex >= 0)
+        {
+            // 폭탄 칸의 뭉치가 눌린 패 쪽으로 날아간다.
+            var fromSlot = traySlots[slotIndex];
+            var flyer = Ui.Image(Fx.Layer != null ? Fx.Layer : (RectTransform)transform, Art.Card(Art.MonthHero(month)), Color.white, "BombFly");
+            flyer.rectTransform.sizeDelta = fromSlot.sizeDelta;
+            flyer.rectTransform.position = fromSlot.position;
+            Vector3 start = fromSlot.position, end = views[origin.X, origin.Y].Rt.position;
+            Anim.Run(flyer, 0.18f, t =>
+            {
+                flyer.rectTransform.position = Vector3.Lerp(start, end, Anim.InCubic(t));
+                flyer.rectTransform.localEulerAngles = new Vector3(0f, 0f, t * 360f);
+            }, () => Destroy(flyer.gameObject));
+        }
         bombs.Remove(month);
         RefreshTray();
 
@@ -731,8 +827,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
             elapsed += Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             if (elapsed >= Limit) TimeUp();
         }
+        if (!Paused && !finished) UpdatePending(Mathf.Min(Time.unscaledDeltaTime, 0.1f));
         RefreshTimer();
-        RefreshCombo();
     }
 
     void RefreshTimer()
@@ -760,22 +856,11 @@ public class GameScreen : MonoBehaviour, IBackHandler
             float f = Mathf.Clamp01((Limit - lose[i]) / Limit);
             starMarks[i].anchoredPosition = new Vector2(f * barW, 0f);
             bool alive = elapsed <= lose[i] && revives == 0;
-            starMarks[i].GetComponent<Image>().color = alive ? Color.white : new Color(1f, 1f, 1f, 0.25f);
+            starMarks[i].GetComponent<Image>().color = alive ? Color.white : Art.GwangEmpty;
         }
         int stars = revives > 0 ? 1 : def.StarsFor(elapsed);
         for (int i = 0; i < 3; i++)
-            hudStars[i].color = i < stars ? Art.Gold : new Color(0f, 0f, 0f, 0.35f);
-    }
-
-    void RefreshCombo()
-    {
-        float left = combo > 0 ? 1f - (elapsed - lastMatchAt) / def.comboWindow : 0f;
-        if (left <= 0f && combo > 0 && !finished) combo = 0;
-        comboRing.fillAmount = Mathf.Clamp01(left);
-        int toBomb = 3 - combo % 3;
-        comboText.text = combo > 0 ? "×" + combo : "-";
-        comboRing.color = combo % 3 == 2 ? Color.Lerp(Art.Gold, Art.Red, 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 12f)) : Art.Gold;
-        comboRoot.localScale = Vector3.one * (combo % 3 == 2 && toBomb == 1 ? 1f + 0.05f * Mathf.Sin(Time.unscaledTime * 12f) : 1f);
+            hudStars[i].color = i < stars ? Color.white : Art.GwangEmpty;
     }
 
     void TimeUp()
@@ -845,28 +930,29 @@ public class GameScreen : MonoBehaviour, IBackHandler
             p.CanClose = false;
             p.OnBackPressed = () => App.I.ShowStages(def.number);
 
-            // 큰 별 셋이 차례로 찍힌다.
+            // 큰 광 셋이 차례로 도장처럼 찍힌다.
             for (int i = 0; i < 3; i++)
             {
-                var slot = Ui.Image(p.Panel, Art.Star, new Color(0f, 0f, 0f, 0.18f), "StarSlot" + i);
+                var slot = Ui.Image(p.Panel, Art.Gwang, new Color(0f, 0f, 0f, 0.15f), "GwangSlot" + i);
                 float size = i == 1 ? 210f : 170f;
                 Ui.Place(slot.rectTransform, 0.5f, 1f, new Vector2(size, size), new Vector2((i - 1) * 220f, i == 1 ? -230f : -260f));
                 if (i >= stars) continue;
-                var star = Ui.Image(slot.rectTransform, Art.Star, Art.Gold, "Star");
+                var star = Ui.Image(slot.rectTransform, Art.Gwang, Color.white, "Gwang");
                 Ui.Stretch(star.rectTransform);
                 star.rectTransform.localScale = Vector3.zero;
                 int index = i;
-                Anim.Run(star, 0.35f, t => star.rectTransform.localScale = Vector3.one * Anim.OutBack(t), () =>
+                Anim.Run(star, 0.3f, t => star.rectTransform.localScale = Vector3.one * Mathf.Lerp(2.4f, 1f, Anim.InCubic(t)), () =>
                 {
                     Sfx.Star(index);
-                    Fx.Burst(star.rectTransform.position, 14, Fx.FireColors, 700f, Art.Star, 0.6f, 30f, -1000f);
+                    Sfx.Snap(1);
+                    Fx.Burst(star.rectTransform.position, 14, Fx.FireColors, 700f, Art.Spark, 0.6f, 30f, -1000f);
                 }, 0.25f + i * 0.35f);
             }
 
             p.Label(Loc.T("걸린 시간  ", "Time  ") + Clock(seconds), 60, Art.Ink, 430f);
             string bestLine = newBest && prevBest > 0 ? Loc.T("새 기록!", "New record!") : Loc.T("최고 기록  ", "Best  ") + Clock(Progress.BestSeconds(def.number));
             p.Label(bestLine, 44, newBest && prevBest > 0 ? Art.Red : Art.GreyDark, 500f);
-            p.Label("★★★ " + Clock(def.star3) + "     ★★ " + Clock(def.star2), 40, Art.GreyDark, 560f);
+            p.Label(Loc.T("3광 ", "3 Gwang ") + Clock(def.star3) + "     " + Loc.T("2광 ", "2 Gwang ") + Clock(def.star2), 40, Art.GreyDark, 560f);
 
             float y = 690f;
             if (!last)
@@ -927,7 +1013,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
     void ShowTipIfNeeded()
     {
         if (def.number == 1) Tips.ShowOnce("rules", Tips.ShowRules);
-        else if (def.number == 2) Tips.ShowOnce("combo", Tips.ShowCombo);
+        else if (def.number == 2) Tips.ShowOnce("stack", Tips.ShowCombo);
         else if (gravity != GravityMode.None) Tips.ShowOnce("gravity", () => Tips.ShowGravity(gravity));
         else if (blockViews.Count > 0) Tips.ShowOnce("blocks", Tips.ShowBlocks);
     }
@@ -940,10 +1026,22 @@ public class GameScreen : MonoBehaviour, IBackHandler
         if (Paused || finished) return false;
         var moves = Rules.FindMoves(board, BombMask());
         if (moves.Count == 0) return false;
-        var m = moves[0];
+        // 쌌다를 시험할 수 있게 같은 달이 4장 이상 남은 짝을 먼저
+        var m = moves.Find(x => board.CountMonth(Board.Month(board[x.A])) >= 4);
+        if (m.A == m.B) m = moves[0];
         if (selected != null) { selected.Selected = false; selected = null; }
         OnCardPressed(views[m.A.X, m.A.Y]);
         OnCardPressed(views[m.B.X, m.B.Y]);
+        return true;
+    }
+
+    /// <summary>포개진 뭉치가 있으면 같은 달 셋째 패를 누른다.</summary>
+    public bool DevStackThird()
+    {
+        if (pending == null) return false;
+        var cells = board.CellsOfMonth(pending.month);
+        if (cells.Count == 0) return false;
+        OnCardPressed(views[cells[0].X, cells[0].Y]);
         return true;
     }
 

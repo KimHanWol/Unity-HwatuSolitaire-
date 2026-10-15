@@ -9,6 +9,7 @@
   라이선스 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
   원본 SVG 를 크기만 바꿔 PNG 로 렌더링했다. 이 PNG(아틀라스)도 CC BY-SA 4.0 을 따른다.
   게임 안 설정 → 만든 사람(크레딧)에 같은 내용을 표시한다.
+- 광 표시 `gwang.svg` → `Assets/Resources/Cards/gwang.png`(128px): 1월 광 SVG에서 光 동그라미만 떼어 낸 것 (같은 CC BY-SA 4.0). 별 대신 평가 표시로 쓴다.
 - 뒷면 `back.svg`: 이 프로젝트에서 직접 그림.
 
 ## 다시 만드는 법

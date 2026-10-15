@@ -61,6 +61,29 @@ public static class Art
 
     public static Sprite Back => Card(BackIndex);
 
+    static Sprite gwang;
+
+    /// <summary>
+    /// 광(光) 표시. 별 대신 쓴다 (★★★ → 광 셋). 1월 광 패의 붉은 동그라미를 떼어 낸 그림 (Tools/Cards/gwang.svg).
+    /// 아직 못 받은 자리는 GwangEmpty 색으로 칠해 그림자처럼 보인다.
+    /// </summary>
+    public static Sprite Gwang
+    {
+        get
+        {
+            if (gwang == null)
+            {
+                var tex = Resources.Load<Texture2D>("Cards/gwang");
+                gwang = tex != null
+                    ? Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect)
+                    : Star;
+            }
+            return gwang;
+        }
+    }
+
+    public static readonly Color GwangEmpty = new Color(0f, 0f, 0f, 0.28f);
+
     // ------------------------------------------------------------ 거리 함수 그림
     delegate float Sdf(Vector2 p);
 

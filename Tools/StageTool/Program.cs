@@ -53,7 +53,7 @@ static class Program
         File.WriteAllText(path, json, new UTF8Encoding(false));
         Console.WriteLine("wrote " + JsonPath + " (" + json.Length / 1024 + " KB)");
 
-        var report = new StringBuilder("stage\tchapter\tsize\tcards\tblocks\tmonths\tgravity\tshape\tsim\tstar3\tstar2\tlimit\tcombo\n");
+        var report = new StringBuilder("stage\tchapter\tsize\tcards\tblocks\tmonths\tgravity\tshape\tsim\tstar3\tstar2\tlimit\tstack\n");
         foreach (var s in stages)
         {
             var plan = StageGenerator.MakePlan(s.number);
@@ -66,7 +66,7 @@ static class Program
                 .Append((GravityMode)s.gravity).Append('\t').Append(plan.Shape).Append('\t')
                 .Append(s.simSeconds.ToString(CultureInfo.InvariantCulture)).Append('\t')
                 .Append(s.star3).Append('\t').Append(s.star2).Append('\t').Append(s.timeLimit).Append('\t')
-                .Append(s.comboWindow.ToString(CultureInfo.InvariantCulture)).Append('\n');
+                .Append(s.stackWindow.ToString(CultureInfo.InvariantCulture)).Append('\n');
         }
         File.WriteAllText(Path.Combine(root, ReportPath), report.ToString(), new UTF8Encoding(false));
         Console.WriteLine("wrote " + ReportPath);
@@ -116,7 +116,7 @@ static class Program
               .Append(",\"star3\":").Append(s.star3)
               .Append(",\"star2\":").Append(s.star2)
               .Append(",\"timeLimit\":").Append(s.timeLimit)
-              .Append(",\"comboWindow\":").Append(s.comboWindow.ToString(CultureInfo.InvariantCulture))
+              .Append(",\"stackWindow\":").Append(s.stackWindow.ToString(CultureInfo.InvariantCulture))
               .Append(",\"simSeconds\":").Append(s.simSeconds.ToString(CultureInfo.InvariantCulture))
               .Append(",\"cells\":[").Append(string.Join(",", s.cells)).Append("]}");
             sb.Append(i < stages.Length - 1 ? ",\n" : "\n");

@@ -54,10 +54,10 @@ public class DevAutoShot : MonoBehaviour
         game.DevPlayMove();
         yield return Wait(0.2f);
         yield return Shot("snap");
-        game.DevPlayMove();
-        yield return Wait(0.35f);
-        game.DevPlayMove();
-        yield return Wait(0.45f);
+        yield return Wait(0.3f);
+        yield return Shot("pending");
+        game.DevStackThird();
+        yield return Wait(0.4f);
         yield return Shot("stacked");
         yield return Wait(1.3f);
         yield return Shot("bomb_ready");

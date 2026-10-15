@@ -76,8 +76,8 @@ public class TitleScreen : MonoBehaviour, IBackHandler
         // 모은 별
         var pill = Ui.Image(rt, Art.Round, new Color(0f, 0f, 0f, 0.35f), "Stars");
         Ui.Place(pill.rectTransform, 0.5f, 0.47f, new Vector2(420f, 90f), new Vector2(0f, -220f));
-        var starIcon = Ui.Image(pill.rectTransform, Art.Star, Art.Gold, "Icon");
-        Ui.Place(starIcon.rectTransform, 0f, 0.5f, new Vector2(64f, 64f), new Vector2(60f, 0f));
+        var starIcon = Ui.Image(pill.rectTransform, Art.Gwang, Color.white, "Icon");
+        Ui.Place(starIcon.rectTransform, 0f, 0.5f, new Vector2(70f, 70f), new Vector2(60f, 0f));
         var starText = Ui.Text(pill.rectTransform, Progress.TotalStars + " / " + (App.I.Stages.stages.Length * 3), 48, Color.white, TextAnchor.MiddleCenter, "Text");
         Ui.Stretch(starText.rectTransform);
         starText.rectTransform.offsetMin = new Vector2(70f, 0f);

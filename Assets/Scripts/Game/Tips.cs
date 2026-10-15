@@ -36,7 +36,7 @@ public static class Tips
             "두 장을 차례로 누르면 \"짝!\" 하고 사라져요.\n단, 두 장을 잇는 선이 <color=#C8102E>두 번까지만 꺾여야</color> 하고\n중간에 다른 패가 막고 있으면 안 돼요.\n판 바깥 테두리로 돌아가는 건 괜찮아요.",
             "Tap two cards to snap them away.\nThe line joining them may turn <color=#C8102E>at most twice</color>\nand must not cross other cards.\nGoing around the outside edge is fine."),
             40, Art.GreyDark, 680f, 300f);
-        p.Label(Loc.T("빨리 깰수록 별이 많아요. ★★★에 도전!", "Clear fast to earn up to ★★★!"), 44, Art.Red, 900f, 80f);
+        p.Label(Loc.T("빨리 깰수록 광을 더 받아요. 3광에 도전!", "Clear fast to collect up to 3 Gwang (光)!"), 44, Art.Red, 900f, 80f);
         p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 1050f, () => p.Close(), 0f, 0f, 140f);
         p.Button(Loc.T("연속·폭탄 규칙", "Combos & Bombs"), Art.IconBomb, Art.Red, Art.RedDark, 1200f, () => { p.Close(); ShowCombo(); }, 0f, 0f, 120f);
     }
@@ -47,8 +47,8 @@ public static class Tips
         var bomb = Ui.Image(p.Panel, Art.IconBomb, Color.white, "Bomb");
         Ui.Place(bomb.rectTransform, 0.5f, 1f, new Vector2(200f, 200f), new Vector2(0f, -240f));
         p.Label(Loc.T(
-            "짝을 맞추고 금방 또 맞추면 <color=#C8102E>연속</color>이에요.\n(아래 동그라미가 다 줄기 전에!)\n\n<color=#C8102E>3연속</color>마다 \"쌌다!\" — 마지막에 맞춘 달이\n폭탄이 되어 아래 칸에 모여요. (최대 3개)\n\n폭탄 달의 빛나는 패를 하나 누르면\n그 달 패가 한꺼번에 <color=#C8102E>펑!</color> 터져요.",
-            "Make pairs quickly in a row for a <color=#C8102E>combo</color>\n(before the ring runs out!).\n\nEvery <color=#C8102E>3 in a row</color>: \"Stacked!\" - that month\nbecomes a bomb in the tray (up to 3).\n\nTap any glowing card of a bomb month and\nall of that month <color=#C8102E>BOOM</color> at once!"),
+            "짝을 맞추면 두 장이 잠깐 <color=#C8102E>포개져</color> 있어요.\n(둘레의 금빛 고리가 줄어드는 동안)\n\n그 사이에 <color=#C8102E>같은 달 패를 하나 더</color> 누르면\n세 장이 뭉쳐 \"쌌다!\" — 폭탄 칸으로 가요. (최대 3개)\n\n폭탄 달의 빛나는 패를 하나 누르면\n그 달 패가 한꺼번에 <color=#C8102E>펑!</color> 터져요.",
+            "After a pair, the two cards <color=#C8102E>stay stacked</color> briefly\n(while the gold ring runs down).\n\nTap <color=#C8102E>one more card of that month</color> in time and\nthe three clump up - \"Stacked!\" - into the bomb tray (max 3).\n\nTap any glowing card of a bomb month and\nall of that month go <color=#C8102E>BOOM</color> at once!"),
             40, Art.GreyDark, 640f, 520f);
         p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 1040f, () => p.Close(), 0f, 0f, 140f);
     }

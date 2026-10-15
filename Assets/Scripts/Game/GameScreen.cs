@@ -520,7 +520,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
         }, () =>
         {
             Vector3 w = third.Rt.position;
-            Sfx.Snap(1);
             Sfx.Stack();
             Settings.Haptic(60, 200);
             Fx.Flash(w, cellW * 4.5f, new Color(1f, 0.7f, 0.25f, 1f), 0.45f);

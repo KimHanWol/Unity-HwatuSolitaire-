@@ -21,12 +21,19 @@ public class Sfx : MonoBehaviour
     AudioClip[] snap;
     AudioClip[] combo;
     AudioClip[] star;
+    AudioClip stackSlap;
     AudioClip select, deny, stack, bomb, shuffle, clear, fail, hint, click, tick, slide, revive;
     float lastSnap;
 
     public static void Select() => Play(i => i.select, 0.45f);
     public static void Deny() => Play(i => i.deny, 0.5f);
-    public static void Stack() => Play(i => i.stack, 0.9f);
+    /// <summary>쌌다: 짝·짝·짝! 세 번 내리치는 녹음(있으면)과 북·징을 함께. 녹음이 없으면 북·징만.</summary>
+    public static void Stack()
+    {
+        if (instance == null) return;
+        if (instance.stackSlap != null) instance.PlayClip(instance.stackSlap, 1f);
+        instance.PlayClip(instance.stack, instance.stackSlap != null ? 0.55f : 0.9f);
+    }
     public static void Shuffle() => Play(i => i.shuffle, 0.6f);
     public static void Clear() => Play(i => i.clear, 0.8f);
     public static void Fail() => Play(i => i.fail, 0.7f);
@@ -111,6 +118,7 @@ public class Sfx : MonoBehaviour
         select = Load("select", BuildSelect);
         deny = Load("deny", BuildDeny);
         stack = Load("stack", BuildStack);
+        stackSlap = Resources.Load<AudioClip>("Audio/stack_slap");
         bomb = Load("bomb", BuildBomb);
         shuffle = Load("shuffle", BuildShuffle);
         clear = Load("clear", BuildClear);

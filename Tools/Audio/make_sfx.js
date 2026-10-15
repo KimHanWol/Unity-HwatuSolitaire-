@@ -1,19 +1,28 @@
-// 고스톱 앱 느낌의 효과음을 Kenney CC0 녹음으로 만든다 → Assets/Resources/Audio/*.ogg
+// 고스톱 앱 느낌의 효과음을 CC0 녹음으로 만든다 → Assets/Resources/Audio/*.ogg
 // (Sfx.cs 는 Resources/Audio/<이름> 이 있으면 코드 합성 대신 그 클립을 쓴다.)
 //
 // 재료 (둘 다 CC0, https://kenney.nl):
 //   Casino Audio  https://kenney.nl/assets/casino-audio   (card-place, card-slide, card-shuffle ...)
-//   Impact Sounds https://kenney.nl/assets/impact-sounds  (impactPunch, impactWood ...)
-// 사용: node Tools/Audio/make_sfx.js <casino 압축 푼 폴더> <impact 압축 푼 폴더>   (ffmpeg 필요)
+//   Impact Sounds https://kenney.nl/assets/impact-sounds  (impactPunch ...)
+//   박수 (Freesound, 모두 CC0 — 파일 이름은 소리 번호):
+//     561119 Sorinious_Genious "Clap-9", 463688 Landau00 "HandClap5", 478657 xUMR "clap.wav", 789991 randbsoundbites "Single clap"
+//     https://freesound.org/s/<번호>/ 에서 받는다 (미리듣기 mp3 로도 충분하다).
+// 사용: node Tools/Audio/make_sfx.js <casino 폴더> <impact 폴더> <박수 폴더>   (ffmpeg 필요)
 //
-// 짝: 플라스틱 화투패가 탁 부딪는 고음(card-place) + 손으로 내리치는 몸통(impactPunch) + 바닥 쿵(impactWood)을
-//     각 소리의 "가장 큰 순간"에 정확히 맞춰 겹친다 (시작 순간으로 맞추면 최고점이 어긋나 "타닥"처럼 갈라진다).
-//     그 뒤 짧게 빠르게 사라지게 다듬고 살짝 포화시켜 단단한 "짝!"으로 만든다.
+// 짝: 고스톱 앱의 "짝!"은 박수에 가깝다. 박수 녹음 둘을 "가장 큰 순간"에 정확히 맞춰 겹쳐(시작 순간으로 맞추면 최고점이 어긋나
+//     "타닥"처럼 갈라진다) 손바닥이 맞닿는 날카로운 소리와 울림을 함께 얻고, 짧게 사라지게 다듬어 살짝 포화시킨다.
 const { execFileSync } = require('child_process');
 const fs = require('fs'), path = require('path'), os = require('os');
 
-const [, , CASINO, IMPACT] = process.argv;
-if (!CASINO || !IMPACT) { console.error('usage: node make_sfx.js <casino dir> <impact dir>'); process.exit(1); }
+const [, , CASINO, IMPACT, CLAPS] = process.argv;
+if (!CASINO || !IMPACT || !CLAPS) { console.error('usage: node make_sfx.js <casino dir> <impact dir> <clap dir>'); process.exit(1); }
+function clap(id) {
+  for (const ext of ['.wav', '.mp3', '.ogg', '.flac']) {
+    const f = path.join(CLAPS, id + ext);
+    if (fs.existsSync(f)) return f;
+  }
+  throw new Error('clap ' + id + ' not found in ' + CLAPS);
+}
 const OUT = path.resolve(__dirname, '../../Assets/Resources/Audio');
 fs.mkdirSync(OUT, { recursive: true });
 const SR = 44100;
@@ -85,32 +94,31 @@ function write(name, x, quality = 6) {
   console.log('wrote ' + name + '.ogg (' + (x.length / SR).toFixed(2) + 's)');
 }
 
-// ------------------------------------------------------------ 짝
-function snap(name, crackFile, bodyFile, thumpFile, gains) {
-  const crack = alignPeak(decode(find(CASINO, crackFile), 'highpass=f=1200'), 0.003);
-  const body = alignPeak(decode(find(IMPACT, bodyFile), 'highpass=f=150,lowpass=f=5000'), 0.003);
-  const thump = alignPeak(decode(find(IMPACT, thumpFile), 'lowpass=f=700'), 0.004);
-  let x = mix([
-    { data: crack, gain: gains[0] },
-    { data: body, gain: gains[1] },
-    { data: thump, gain: gains[2] },
-  ], 0.22);
-  x = envelope(x, 0.025, 0.045);
-  write(name, finish(x, 1.6, -0.8));
+// ------------------------------------------------------------ 짝 (박수)
+/** 주 박수 + 보조 박수(날카로운 앞부분을 더해 또렷하게)를 최고점에 맞춰 겹친다. */
+function snap(name, mainId, accentId, accentGain, bright) {
+  const main = alignPeak(decode(clap(mainId), 'highpass=f=250,equalizer=f=2200:t=q:w=1:g=' + bright), 0.004);
+  const accent = alignPeak(decode(clap(accentId), 'highpass=f=900'), 0.004);
+  // 보조 박수는 앞 30ms 만 (뒤 울림은 주 박수 것을 쓴다)
+  const head = accent.slice(0, Math.round(0.03 * SR));
+  envelope(head, 0.015, 0.008);
+  let x = mix([{ data: main, gain: 1.0 }, { data: head, gain: accentGain }], 0.24);
+  x = envelope(x, 0.03, 0.06);
+  write(name, finish(x, 1.5, -0.8));
   return x;
 }
-const s1 = snap('snap', 'card-place-3.ogg', 'impactPunch_medium_000.ogg', 'impactWood_light_000.ogg', [1.0, 0.85, 0.7]);
-const s2 = snap('snap2', 'card-place-1.ogg', 'impactPunch_medium_001.ogg', 'impactWood_light_001.ogg', [1.0, 0.8, 0.7]);
-const s3 = snap('snap3', 'card-place-4.ogg', 'impactPunch_medium_003.ogg', 'impactWood_light_002.ogg', [1.0, 0.85, 0.6]);
+const s1 = snap('snap', '561119', '463688', 0.6, 3);
+const s2 = snap('snap2', '478657', '561119', 0.5, 2);
+const s3 = snap('snap3', '789991', '463688', 0.5, 3);
 
-// ------------------------------------------------------------ 쌌다: 짝·짝·짝! 세 번, 마지막은 묵직하게
+// ------------------------------------------------------------ 쌌다: 짝·짝·짝! 세 번, 마지막은 크고 묵직하게
 {
-  const heavy = alignPeak(decode(find(IMPACT, 'impactPunch_heavy_000.ogg'), 'lowpass=f=2500'), 0.004);
+  const heavy = alignPeak(decode(find(IMPACT, 'impactPunch_heavy_000.ogg'), 'lowpass=f=1800'), 0.004);
   let x = mix([
-    { data: s1, gain: 0.55, delay: 0.0 },
-    { data: s2, gain: 0.7, delay: 0.12 },
-    { data: s3, gain: 1.0, delay: 0.26 },
-    { data: heavy, gain: 0.9, delay: 0.26 },
+    { data: s1, gain: 0.6, delay: 0.0 },
+    { data: s2, gain: 0.75, delay: 0.13 },
+    { data: s3, gain: 1.0, delay: 0.27 },
+    { data: heavy, gain: 0.45, delay: 0.27 },
   ], 0.9);
   write('stack_slap', finish(envelope(x, 0.45, 0.15), 1.4, -0.8));
 }

@@ -11,8 +11,8 @@ using UnityEngine.UI;
 public class CardView : MonoBehaviour, IPointerDownHandler
 {
     public int Value { get; private set; }
-    public Cell Cell;
-    public bool IsBlock => Value == Board.Block;
+    /// <summary>판의 자리 번호 (Layout.Tiles 순서).</summary>
+    public int Index;
     public RectTransform Rt { get; private set; }
 
     public Action<CardView> Pressed;
@@ -84,29 +84,33 @@ public class CardView : MonoBehaviour, IPointerDownHandler
     public void SetValue(int value)
     {
         Value = value;
-        face.sprite = Art.Card(value == Board.Block ? Art.BackIndex : value);
-        if (value == Board.Block)
-        {
-            face.color = new Color(0.78f, 0.72f, 0.72f);
-            monthBadge.SetActive(false);
-            GetComponent<Image>().raycastTarget = false;
-        }
-        else
-        {
-            face.color = Color.white;
-            monthText.text = (Board.Month(value) + 1).ToString();
-            RefreshMonthBadge();
-        }
+        face.sprite = Art.Card(value);
+        monthText.text = (Board.Month(value) + 1).ToString();
+        RefreshMonthBadge();
+    }
+
+    bool blocked;
+    static readonly Color BlockedTint = new Color(0.74f, 0.72f, 0.68f);
+
+    /// <summary>막힌 패(지금 짝으로 고를 수 없는 패)는 살짝 어둡게. 열리면 밝아진다.</summary>
+    public void SetBlocked(bool value, bool instant = false)
+    {
+        if (blocked == value && !instant) return;
+        blocked = value;
+        Color to = value ? BlockedTint : Color.white;
+        if (instant) { face.color = to; return; }
+        Color from = face.color;
+        Anim.Run(face, 0.25f, t => face.color = Color.Lerp(from, to, t));
     }
 
     public void RefreshMonthBadge()
     {
-        if (!IsBlock) monthBadge.SetActive(Settings.ShowMonth);
+        monthBadge.SetActive(Settings.ShowMonth);
     }
 
     public void OnPointerDown(PointerEventData e)
     {
-        if (!IsBlock) Pressed?.Invoke(this);
+        Pressed?.Invoke(this);
     }
 
     public bool Selected
@@ -161,24 +165,6 @@ public class CardView : MonoBehaviour, IPointerDownHandler
             float sx = t < 0.5f ? 1f - Anim.InCubic(t * 2f) : Anim.OutCubic((t - 0.5f) * 2f);
             lift.localScale = new Vector3(Mathf.Max(0.02f, sx), 1f, 1f);
             if (t >= 0.5f && Value != value) SetValue(value);
-        }, null, delay);
-    }
-
-    /// <summary>뒷면으로 시작해서 delay 뒤에 뒤집혀 그림이 드러난다 (2층 판의 아래 패가 올라올 때).</summary>
-    public void FlipFromBack(float delay)
-    {
-        face.sprite = Art.Back;
-        monthBadge.SetActive(false);
-        bool shown = false;
-        Anim.Run(lift, 0.32f, t =>
-        {
-            float sx = t < 0.5f ? 1f - Anim.InCubic(t * 2f) : Anim.OutCubic((t - 0.5f) * 2f);
-            lift.localScale = new Vector3(Mathf.Max(0.02f, sx), 1f, 1f);
-            if (t >= 0.5f && !shown)
-            {
-                shown = true;
-                SetValue(Value);
-            }
         }, null, delay);
     }
 

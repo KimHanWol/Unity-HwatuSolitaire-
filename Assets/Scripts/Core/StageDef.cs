@@ -11,17 +11,15 @@ namespace HwatuSolitaire.Core
     {
         /// <summary>1부터.</summary>
         public int number;
-        public int width;
-        public int height;
-        /// <summary>행 우선(y * width + x). 패 번호 0~47, -1 빈칸, -2 막힌 칸.</summary>
+        /// <summary>판 모양 이름 (pyramid, steps, diamond, cross, twin, frame, tower). 참고용.</summary>
+        public string shape;
+        /// <summary>자리 [x0,y0,z0, x1,y1,z1, ...] — 반 칸 단위, z는 층.</summary>
+        public int[] tiles;
+        /// <summary>자리마다 화투패 번호 (tiles와 같은 순서).</summary>
         public int[] cells;
-        /// <summary>2층 판의 아래층 (cells와 같은 길이, -1은 아래층 없음). 1층 판이면 비어 있다.</summary>
-        public int[] under;
-        /// <summary>GravityMode 값.</summary>
-        public int gravity;
-        /// <summary>이 시간(초) 안에 깨면 별 3개.</summary>
+        /// <summary>이 시간(초) 안에 깨면 3광.</summary>
         public int star3;
-        /// <summary>이 시간(초) 안에 깨면 별 2개. 제한 시간 안이면 별 1개.</summary>
+        /// <summary>이 시간(초) 안에 깨면 2광. 제한 시간 안이면 1광.</summary>
         public int star2;
         /// <summary>제한 시간(초). 넘기면 실패.</summary>
         public int timeLimit;
@@ -30,11 +28,13 @@ namespace HwatuSolitaire.Core
         /// <summary>모의 풀이로 잰 예상 시간(초). 참고용.</summary>
         public float simSeconds;
 
-        public GravityMode Gravity => (GravityMode)gravity;
+        [NonSerialized] Layout layout;
 
-        public Board CreateBoard() => new Board(width, height, cells, under != null && under.Length == cells.Length ? under : null);
+        public Layout Layout => layout ?? (layout = Layout.FromFlat(tiles));
 
-        /// <summary>걸린 시간으로 별 개수(0~3). 제한 시간을 넘겼으면 1개(부활해서 깬 경우).</summary>
+        public Board CreateBoard() => new Board(Layout, cells);
+
+        /// <summary>걸린 시간으로 광 개수(1~3).</summary>
         public int StarsFor(float seconds)
         {
             if (seconds <= star3) return 3;

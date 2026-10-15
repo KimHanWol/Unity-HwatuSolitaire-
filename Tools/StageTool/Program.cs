@@ -15,7 +15,7 @@ static class Program
 {
     const string JsonPath = "Assets/Resources/Stages/stages.json";
     const string ReportPath = "Tools/StageTool/report.tsv";
-    const int Version = 1;
+    const int Version = 2; // 2: 솔리테어(상하이) 판
 
     static int Main(string[] args)
     {
@@ -53,17 +53,17 @@ static class Program
         File.WriteAllText(path, json, new UTF8Encoding(false));
         Console.WriteLine("wrote " + JsonPath + " (" + json.Length / 1024 + " KB)");
 
-        var report = new StringBuilder("stage\tchapter\tsize\tcards\tblocks\tmonths\tgravity\tshape\tsim\tstar3\tstar2\tlimit\tstack\n");
+        var report = new StringBuilder("stage\tchapter\tshape\tsize\tlayers\tcards\tmonths\tfreeAtStart\tsim\tstar3\tstar2\tlimit\tstack\n");
         foreach (var s in stages)
         {
             var plan = StageGenerator.MakePlan(s.number);
-            int cards = s.CreateBoard().CardCount;
-            int blocks = s.cells.Count(v => v == Board.Block);
+            var board = s.CreateBoard();
+            var (fw, fh) = Layouts.Footprint(new System.Collections.Generic.List<Tile>(s.Layout.Tiles));
             int months = s.cells.Where(v => v >= 0).Select(Board.Month).Distinct().Count();
-            report.Append(s.number).Append('\t').Append(plan.Chapter + 1).Append('\t')
-                .Append(s.width).Append('x').Append(s.height).Append('\t')
-                .Append(cards).Append('\t').Append(blocks).Append('\t').Append(months).Append('\t')
-                .Append((GravityMode)s.gravity).Append('\t').Append(plan.Shape).Append('\t')
+            int free = Enumerable.Range(0, board.Count).Count(board.Free);
+            report.Append(s.number).Append('\t').Append(plan.Chapter + 1).Append('\t').Append(s.shape).Append('\t')
+                .Append(fw.ToString(CultureInfo.InvariantCulture)).Append('x').Append(fh.ToString(CultureInfo.InvariantCulture)).Append('\t')
+                .Append(s.Layout.MaxZ + 1).Append('\t').Append(board.CardCount).Append('\t').Append(months).Append('\t').Append(free).Append('\t')
                 .Append(s.simSeconds.ToString(CultureInfo.InvariantCulture)).Append('\t')
                 .Append(s.star3).Append('\t').Append(s.star2).Append('\t').Append(s.timeLimit).Append('\t')
                 .Append(s.stackWindow.ToString(CultureInfo.InvariantCulture)).Append('\n');
@@ -84,15 +84,12 @@ static class Program
             var s = new StageDef
             {
                 number = e.GetProperty("number").GetInt32(),
-                width = e.GetProperty("width").GetInt32(),
-                height = e.GetProperty("height").GetInt32(),
-                gravity = e.GetProperty("gravity").GetInt32(),
+                tiles = e.GetProperty("tiles").EnumerateArray().Select(x => x.GetInt32()).ToArray(),
                 cells = e.GetProperty("cells").EnumerateArray().Select(x => x.GetInt32()).ToArray(),
-                under = e.TryGetProperty("under", out var u) ? u.EnumerateArray().Select(x => x.GetInt32()).ToArray() : null,
             };
             var board = s.CreateBoard();
             bool evenMonths = Enumerable.Range(0, Board.Months).All(m => board.CountMonth(m) % 2 == 0);
-            bool solvable = Solver.Solve(board, s.Gravity, 7, 400) != null;
+            bool solvable = Solver.Solve(board, 7, 400) != null;
             if (!evenMonths || !solvable)
             {
                 bad++;
@@ -111,17 +108,14 @@ static class Program
         {
             var s = stages[i];
             sb.Append("{\"number\":").Append(s.number)
-              .Append(",\"width\":").Append(s.width)
-              .Append(",\"height\":").Append(s.height)
-              .Append(",\"gravity\":").Append(s.gravity)
+              .Append(",\"shape\":\"").Append(s.shape).Append('"')
               .Append(",\"star3\":").Append(s.star3)
               .Append(",\"star2\":").Append(s.star2)
               .Append(",\"timeLimit\":").Append(s.timeLimit)
               .Append(",\"stackWindow\":").Append(s.stackWindow.ToString(CultureInfo.InvariantCulture))
               .Append(",\"simSeconds\":").Append(s.simSeconds.ToString(CultureInfo.InvariantCulture))
-              .Append(",\"cells\":[").Append(string.Join(",", s.cells)).Append("]");
-            if (s.under != null) sb.Append(",\"under\":[").Append(string.Join(",", s.under)).Append("]");
-            sb.Append("}");
+              .Append(",\"tiles\":[").Append(string.Join(",", s.tiles)).Append("]")
+              .Append(",\"cells\":[").Append(string.Join(",", s.cells)).Append("]}");
             sb.Append(i < stages.Length - 1 ? ",\n" : "\n");
         }
         sb.Append("]}\n");

@@ -2,145 +2,119 @@ using System.Collections.Generic;
 using HwatuSolitaire.Core;
 using Xunit;
 
-public class PathFinderTests
+public class FreeRuleTests
 {
-    // 판을 글자로 적는다: '.' 빈칸, '#' 막힌 칸, 'a'~'l' 1~12월 패(그 달의 첫 패), 'A'~'L' 그 달의 둘째 패.
-    static Board Parse(params string[] rows)
+    static Board Row(params int[] cards)
     {
-        int h = rows.Length, w = rows[0].Length;
-        var b = new Board(w, h);
-        for (int y = 0; y < h; y++)
-            for (int x = 0; x < w; x++)
-            {
-                char c = rows[y][x];
-                if (c == '.') b[x, y] = Board.Empty;
-                else if (c == '#') b[x, y] = Board.Block;
-                else if (char.IsLower(c)) b[x, y] = (c - 'a') * 4;
-                else b[x, y] = (c - 'A') * 4 + 1;
-            }
-        return b;
+        var tiles = new List<Tile>();
+        for (int i = 0; i < cards.Length; i++) tiles.Add(new Tile(i * 2, 0, 0));
+        return new Board(new Layout(tiles), cards);
     }
 
     [Fact]
-    public void AdjacentSameMonthConnects()
+    public void OnlyRowEndsAreFree()
     {
-        var b = Parse("aA", "bc");
-        Assert.NotNull(PathFinder.FindPath(b, new Cell(0, 0), new Cell(1, 0)));
+        var b = Row(0, 4, 8, 1);
+        Assert.True(b.Free(0));
+        Assert.False(b.Free(1));
+        Assert.False(b.Free(2));
+        Assert.True(b.Free(3));
+        // 양 끝이 같은 달(1월)이라 짝
+        Assert.True(Rules.CanMatch(b, 0, 3));
+        Assert.False(Rules.CanMatch(b, 0, 1));
     }
 
     [Fact]
-    public void DifferentMonthNeverMatches()
+    public void CoveredTileIsNotFreeEvenIfSidesOpen()
     {
-        var b = Parse("ab");
-        Assert.Null(PathFinder.FindPath(b, new Cell(0, 0), new Cell(1, 0)));
+        // 아래 한 장, 반 칸 어긋나 위에 한 장
+        var layout = new Layout(new[] { new Tile(0, 0, 0), new Tile(1, 1, 1) });
+        var b = new Board(layout, new[] { 0, 1 });
+        Assert.False(b.Exposed(0));
+        Assert.False(b.Free(0));
+        Assert.True(b.Free(1));
+        b[1] = Board.Empty;
+        Assert.True(b.Free(0));
     }
 
     [Fact]
-    public void PathMayUseOuterBorder()
+    public void SideNeighbourMustOverlapVertically()
     {
-        // 가운데 줄이 꽉 막혀 있어도 판 바깥으로 돌아 이어진다 (위로 나가서 꺾고 꺾어 내려오기).
-        var b = Parse(
-            "abcA",
-            "defg");
-        var path = PathFinder.FindPath(b, new Cell(0, 0), new Cell(3, 0));
-        Assert.NotNull(path);
-        Assert.Equal(4, path.Count); // 시작, 꺾임 2번, 끝
-        Assert.Equal(-1, path[1].Y);
-    }
-
-    [Fact]
-    public void ThreeTurnsIsTooMany()
-    {
-        // a 에서 A 로 가려면 꺾임이 3번 필요하다.
-        var b = Parse(
-            "bbbbb",
-            "a..#b",
-            "bb#.b",
-            "b#..A",
-            "bbbbb");
-        Assert.Null(PathFinder.FindPath(b, new Cell(0, 1), new Cell(4, 3)));
-    }
-
-    [Fact]
-    public void TwoTurnsInsideBoard()
-    {
-        var b = Parse(
-            "bbbbb",
-            "a...b",
-            "bbb.b",
-            "bbb.A",
-            "bbbbb");
-        var path = PathFinder.FindPath(b, new Cell(0, 1), new Cell(4, 3));
-        Assert.NotNull(path);
-        Assert.True(path.Count <= 4);
-    }
-
-    [Fact]
-    public void BlocksStopPaths()
-    {
-        var b = Parse(
-            "###",
-            "#a#",
-            "#A#",
-            "###");
-        Assert.NotNull(PathFinder.FindPath(b, new Cell(1, 1), new Cell(1, 2)));
-        var c = Parse(
-            "#####",
-            "#a#A#",
-            "#####");
-        Assert.Null(PathFinder.FindPath(c, new Cell(1, 1), new Cell(3, 1)));
+        // 오른쪽 옆 패가 세로로 반 칸 어긋나 있어도 막는다, 한 칸 넘게 어긋나면 안 막는다.
+        var layout = new Layout(new[] { new Tile(0, 0, 0), new Tile(2, 1, 0), new Tile(-2, 2, 0) });
+        var b = new Board(layout, new[] { 0, 4, 8 });
+        Assert.Single(layout.Right[0]);
+        Assert.Empty(layout.Left[0]);
+        Assert.True(b.Free(0)); // 왼쪽이 비어 있다
     }
 }
 
-public class GravityTests
+public class DealTests
 {
     [Fact]
-    public void DownCompactsColumnsAroundBlocks()
+    public void DealtBoardsAlwaysClearInDealOrder()
     {
-        var b = new Board(1, 5, new[] { 0, Board.Empty, Board.Block, 4, Board.Empty });
-        var slides = Gravity.Apply(b, GravityMode.Down);
-        Assert.Equal(new[] { Board.Empty, 0, Board.Block, Board.Empty, 4 }, b.ToArray());
-        Assert.Equal(2, slides.Count);
+        foreach (var name in Layouts.Names)
+        {
+            var tiles = Layouts.Build(name, 6, 5, 3);
+            if (tiles.Count % 2 == 1) tiles.RemoveAt(tiles.Count - 1);
+            var layout = new Layout(tiles);
+            var slots = new List<int>();
+            for (int i = 0; i < layout.Count; i++) slots.Add(i);
+            var cards = new List<int>();
+            for (int i = 0; i < layout.Count; i++) cards.Add((i / 2 % 12) * 4 + i % 2);
+            int[] dealt = null;
+            var rng = new Rng(1);
+            for (int t = 0; t < 50 && dealt == null; t++) dealt = Rules.Deal(layout, slots, cards, rng);
+            Assert.True(dealt != null, name);
+            Assert.NotNull(Solver.Solve(new Board(layout, dealt), 5, 200));
+        }
     }
 
     [Fact]
-    public void SplitOutMovesHalvesApart()
+    public void ShuffleKeepsCardsAndStaysSolvable()
     {
-        var b = new Board(4, 1, new[] { Board.Empty, 0, 4, Board.Empty });
-        Gravity.Apply(b, GravityMode.SplitOut);
-        Assert.Equal(new[] { 0, Board.Empty, Board.Empty, 4 }, b.ToArray());
-    }
-
-    [Fact]
-    public void SplitInGathersToCenter()
-    {
-        var b = new Board(4, 1, new[] { 0, Board.Empty, Board.Empty, 4 });
-        Gravity.Apply(b, GravityMode.SplitIn);
-        Assert.Equal(new[] { Board.Empty, 0, 4, Board.Empty }, b.ToArray());
+        var stage = StageGenerator.Build(120);
+        var board = stage.CreateBoard();
+        // 몇 짝 지운 뒤 섞기
+        for (int i = 0; i < 5; i++)
+        {
+            var m = Rules.FindMoves(board)[0];
+            Rules.Remove(board, m.A, m.B);
+        }
+        var before = new List<int>(board.ToArray());
+        before.Sort();
+        Rules.Shuffle(board, new Rng(9));
+        var after = new List<int>(board.ToArray());
+        after.Sort();
+        Assert.Equal(before, after);
+        Assert.NotNull(Solver.Solve(board, 3, 200));
     }
 }
 
 public class StageTests
 {
     [Fact]
-    public void EveryPlanHasEvenCardsAndEachMonthEven()
+    public void EveryPlanFitsScreenAndIsEven()
     {
         for (int n = 1; n <= StageGenerator.StageCount; n++)
         {
             var plan = StageGenerator.MakePlan(n);
-            var board = StageGenerator.Deal(plan, new Rng(n));
-            Assert.True(board.CardCount % 2 == 0, "stage " + n);
-            for (int m = 0; m < Board.Months; m++) Assert.True(board.CountMonth(m) % 2 == 0, "stage " + n + " month " + m);
+            Assert.True(plan.Tiles.Count % 2 == 0, "stage " + n);
+            var (w, h) = Layouts.Footprint(plan.Tiles);
+            Assert.True(w <= StageGenerator.MaxColumns && h <= StageGenerator.MaxRows, "stage " + n);
         }
     }
 
     [Fact]
-    public void BuiltStagesAreSolvable()
+    public void BuiltStagesAreSolvableAndMonthsEven()
     {
         foreach (int n in new[] { 1, 26, 60, 110, 175, 240, 300 })
         {
             var stage = StageGenerator.Build(n);
-            Assert.NotNull(Solver.Solve(stage.CreateBoard(), stage.Gravity, 1, 60));
+            var board = stage.CreateBoard();
+            for (int m = 0; m < Board.Months; m++) Assert.True(board.CountMonth(m) % 2 == 0);
+            Assert.NotNull(Solver.Solve(board, 1, 200));
         }
     }
 
@@ -156,50 +130,10 @@ public class StageTests
     }
 
     [Fact]
-    public void TakeRevealsUnderLayer()
+    public void LayoutRoundTrips()
     {
-        var b = new Board(2, 1, new[] { 0, 1 }, new[] { 4, Board.Empty });
-        Assert.Equal(3, b.CardCount);
-        Assert.False(b.Passable(0, 0));
-        Assert.Equal(4, b.Take(new Cell(0, 0)));
-        Assert.Equal(4, b[0, 0]);
-        Assert.Equal(Board.Empty, b.Take(new Cell(0, 0)));
-        Assert.True(b.Passable(0, 0));
-    }
-
-    [Fact]
-    public void LayeredStagesExistAndAreSolvable()
-    {
-        int layered = 0;
-        for (int n = 78; n <= StageGenerator.StageCount; n += 5)
-        {
-            var plan = StageGenerator.MakePlan(n);
-            bool any = false;
-            foreach (bool l in plan.Layered) any |= l;
-            if (!any) continue;
-            layered++;
-            Assert.Equal(GravityMode.None, plan.Gravity);
-            var stage = StageGenerator.Build(n);
-            var board = stage.CreateBoard();
-            Assert.True(board.HasLayers);
-            for (int m = 0; m < Board.Months; m++) Assert.True(board.CountMonth(m) % 2 == 0);
-            Assert.NotNull(Solver.Solve(board, stage.Gravity, 3, 80));
-            if (layered >= 4) break;
-        }
-        Assert.True(layered >= 4);
-    }
-
-    [Fact]
-    public void ShuffleKeepsCardsAndFindsMove()
-    {
-        var stage = StageGenerator.Build(80);
-        var board = stage.CreateBoard();
-        var before = new List<int>(board.ToArray());
-        before.Sort();
-        Rules.Shuffle(board, stage.Gravity, new Rng(5));
-        var after = new List<int>(board.ToArray());
-        after.Sort();
-        Assert.Equal(before, after);
-        Assert.True(Rules.HasMove(board));
+        var stage = StageGenerator.Build(200);
+        var again = Layout.FromFlat(stage.tiles);
+        Assert.Equal(stage.Layout.Count, again.Count);
     }
 }

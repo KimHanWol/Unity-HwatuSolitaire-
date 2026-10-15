@@ -15,7 +15,7 @@ public static class ProjectSetup
 {
     const string ScenePath = "Assets/Scenes/Main.unity";
     // 기기 홈 화면에 보이는 이름. 게임 안 제목은 App.Title.
-    public const string ProductName = "짝! 화투 사천성";
+    public const string ProductName = "짝! 화투 솔리테어";
     const string CompanyName = "LINK_";
     // 스토어에 올린 뒤에는 바꿀 수 없다.
     const string PackageName = "com.kimhanwol.hwatusolitaire";
@@ -34,7 +34,7 @@ public static class ProjectSetup
         };
     }
 
-    [MenuItem("Tools/Hwatu Shisen-Sho/Apply Build Settings")]
+    [MenuItem("Tools/Hwatu Solitaire/Apply Build Settings")]
     public static void ApplyBuildSettings()
     {
         PlayerSettings.companyName = CompanyName;
@@ -67,7 +67,7 @@ public static class ProjectSetup
         Debug.Log("[ProjectSetup] build settings applied: " + CompanyName + " / " + PackageName);
     }
 
-    [MenuItem("Tools/Hwatu Shisen-Sho/Setup Scene")]
+    [MenuItem("Tools/Hwatu Solitaire/Setup Scene")]
     public static void Setup()
     {
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -88,7 +88,7 @@ public static class ProjectSetup
     }
 
     /// <summary>화면 확인용 PC 개발 빌드 (-autoshot 으로 스크린샷).</summary>
-    [MenuItem("Tools/Hwatu Shisen-Sho/Build Windows (dev)")]
+    [MenuItem("Tools/Hwatu Solitaire/Build Windows (dev)")]
     public static void BuildWindows()
     {
         ApplyBuildSettings();
@@ -101,7 +101,7 @@ public static class ProjectSetup
     }
 
     /// <summary>기기에 바로 깔아 볼 수 있는 테스트 APK (디버그 키 서명, 스토어에는 못 올림).</summary>
-    [MenuItem("Tools/Hwatu Shisen-Sho/Build Test APK")]
+    [MenuItem("Tools/Hwatu Solitaire/Build Test APK")]
     public static void BuildTestApk()
     {
         if (!CheckAndroidTarget()) return;
@@ -146,7 +146,7 @@ public static class ProjectSetup
     }
 
     /// <summary>플레이 스토어에 올릴 AAB. 서명 키는 Keystore/keystore.env 또는 Publishing Settings.</summary>
-    [MenuItem("Tools/Hwatu Shisen-Sho/Build Release AAB (Play Store)")]
+    [MenuItem("Tools/Hwatu Solitaire/Build Release AAB (Play Store)")]
     public static void BuildReleaseAab()
     {
         if (!CheckAndroidTarget()) return;

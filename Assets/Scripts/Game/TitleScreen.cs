@@ -43,9 +43,8 @@ public class TitleScreen : MonoBehaviour, IBackHandler
         glow.transform.SetSiblingIndex(0);
 
         // 제목
-        // 영어권에서는 "Shisen-Sho"보다 "Connect"(Onet·Tile Connect류)가 더 잘 알려진 이름이라 그쪽을 쓴다.
-        string main = Loc.T("화투 사천성", "Hwatu Connect");
-        var title = Ui.Text(rt, main, Loc.Korean ? 150 : 128, Art.Gold, TextAnchor.MiddleCenter, "Title");
+        string main = Loc.T("화투 솔리테어", "Hwatu Solitaire");
+        var title = Ui.Text(rt, main, Loc.Korean ? 140 : 116, Art.Gold, TextAnchor.MiddleCenter, "Title");
         Ui.Place(title.rectTransform, 0.5f, 0.47f, new Vector2(1060f, 190f));
         Ui.Outline(title, Art.WoodDark, 7f);
         Ui.Shadow(title, new Color(0f, 0f, 0f, 0.5f), 12f);

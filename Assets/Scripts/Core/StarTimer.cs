@@ -4,20 +4,19 @@ using System.Collections.Generic;
 namespace HwatuSolitaire.Core
 {
     /// <summary>
-    /// 별 기준 시간 정하기. 사람이 한 짝을 찾는 데 걸리는 시간을 판 상태로 어림하는 모형으로
-    /// 스테이지를 여러 번 끝까지 풀어 보고(모의 풀이), 그 가운데값에 배수를 곱해 별 3·2개 기준과 제한 시간을 정한다.
+    /// 광 기준 시간 정하기. 사람이 한 짝을 찾는 데 걸리는 시간을 판 상태로 어림하는 모형으로
+    /// 스테이지를 여러 번 끝까지 풀어 보고(모의 풀이), 그 가운데값에 배수를 곱해 3광·2광 기준과 제한 시간을 정한다.
     ///
     /// 한 짝에 드는 시간(초) = 두 번 누르고 패가 사라지는 시간(Tap)
     ///                     + 찾는 시간: Search × √(남은 패 / 둘 수 있는 짝) × (달 수가 많을수록 조금 더)
-    ///                     + 중력이 있으면 패가 움직여 다시 살펴보는 시간(GravityLook)
+    ///                     + 막힌 패를 가려내는 시간: BlockedLook × (열리지 않은 패 비율)
     /// 막히면 자동 섞기로 Reshuffle 초가 더 든다. 판을 처음 훑어보는 시간(FirstLook)도 더한다.
-    /// 장수가 많을수록, 짝이 드물수록, 달이 많을수록 시간이 길어지므로 "총 장수에 비례"하면서도 판의 성격이 반영된다.
     /// </summary>
     public static class StarTimer
     {
         public const double Tap = 0.85;
         public const double Search = 0.55;
-        public const double GravityLook = 0.25;
+        public const double BlockedLook = 0.5;
         public const double Reshuffle = 2.0;
         public const double FirstLook = 2.0;
 
@@ -27,7 +26,6 @@ namespace HwatuSolitaire.Core
 
         public const int Runs = 15;
 
-        /// <summary>모의 풀이로 예상 시간을 재고 별 기준을 채워 넣는다.</summary>
         public static void Assign(StageDef stage)
         {
             var times = new List<double>();
@@ -46,7 +44,6 @@ namespace HwatuSolitaire.Core
         {
             var rng = new Rng(seed);
             var board = stage.CreateBoard();
-            var gravity = stage.Gravity;
             double time = FirstLook;
             int guard = 0;
             while (!board.Cleared && guard++ < 1000)
@@ -55,17 +52,19 @@ namespace HwatuSolitaire.Core
                 if (moves.Count == 0)
                 {
                     time += Reshuffle;
-                    Rules.Shuffle(board, gravity, rng, 10);
+                    Rules.Shuffle(board, rng);
                     continue;
                 }
                 int remaining = board.CardCount;
-                int months = 0;
+                int free = 0, months = 0;
+                for (int i = 0; i < board.Count; i++) if (board.Free(i)) free++;
                 for (int m = 0; m < Board.Months; m++) if (board.CountMonth(m) > 0) months++;
                 double search = Search * Math.Sqrt(remaining / (double)moves.Count) * (0.75 + 0.25 * months / Board.Months);
-                time += Tap + search + (gravity != GravityMode.None ? GravityLook : 0);
+                double blocked = BlockedLook * (1.0 - free / (double)remaining);
+                time += Tap + search + blocked;
 
                 var m0 = moves[rng.Next(moves.Count)];
-                Rules.Remove(board, m0.A, m0.B, gravity);
+                Rules.Remove(board, m0.A, m0.B);
             }
             return time;
         }

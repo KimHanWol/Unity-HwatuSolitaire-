@@ -1,24 +1,25 @@
-# 짝! 화투 사천성 (HwatuSolitaire)
+# 짝! 화투 솔리테어 (HwatuSolitaire)
 
-화투패로 하는 사천성(Shisen-Sho) 퍼즐. Unity 6 (6000.3.8f1), Android 우선, 세로 화면, 한국어/영어.
+화투패로 하는 상하이(마작 솔리테어) 방식 짝 맞추기 퍼즐. Unity 6 (6000.3.8f1), Android 우선, 세로 화면, 한국어/영어.
+이름: 한국어 "짝! 화투 솔리테어", 영어 "Hwatu Solitaire". (처음엔 사천성 규칙이었다가 2026-10-15 상하이 방식으로 바꿈)
 
 ## 규칙 요약
-- 같은 **달**(1월 송학 ~ 12월 비) 화투 두 장을 꺾임 2번 이하의 선(빈칸·판 바깥 테두리만 지남)으로 이으면 "짝!" 하고 사라진다.
-- **쌌다**: 짝을 맞추면 두 장이 그 자리에 `stackWindow`초(2.0→1.2초, 금빛 고리) 동안 포개져 있다. 그 사이 같은 달 패를 하나 더 누르면(선 연결 불필요)
-  고스톱처럼 세 장이 뭉쳐 "쌌다!" → 뭉치가 아래 폭탄 칸으로 간다(최대 3). 시간이 지나거나 다른 짝을 맞추면 두 장은 그냥 사라진다.
-- **폭탄**: 폭탄 칸에 있는 달의 패를 판에서 하나 누르면 그 패 1장(뭉친 셋과 합쳐 넷째) + 누른 자리에서 가까운 짝(달 상관없이 같은 달끼리) 2~5쌍이 한꺼번에 **펑** 터진다(`GameScreen.BlastCells`, 남은 패 24장마다 1쌍 더).
-  짝 단위라 달마다 장수는 다시 짝수가 된다. 다른 폭탄이 걸린 달은 건드리지 않는다. 폭탄 뒤에 막히면 자동 섞기.
-- 제한 시간 안에 다 지우면 클리어. 평가는 별 대신 **광(光)** 표시: `star3`초 안 3광, `star2`초 안 2광, 그 밖 1광. 부활해서 깨면 1광. (광 그림: `Tools/Cards/gwang.svg` → `Resources/Cards/gwang.png`)
-- 시간 초과 → 보상형 광고로 이어하기(한 판 2번). 둘 곳이 없으면(폭탄도 없으면) 자동으로 섞는다.
-- 중력(3장부터): 짝을 지우면 남은 패가 정해진 방향으로 쏠린다. 엎어진 패(5장부터): 없앨 수 없고 길을 막는다.
-- 2층 판(4장부터 장마다 5판, 45판): 안쪽 칸에 엎어진 패가 한 장 더 깔려 있어(`StageDef.under`, `Board.Take`) 위 패를 지우면 뒤집혀 올라온다. 아래 패는 왼쪽 위로 뒷면이 살짝 비친다. 중력과는 함께 내지 않는다.
-- 이름: 한국어 "짝! 화투 사천성", 영어 "Hwatu Connect" (영어권은 Shisen-Sho보다 Onet/Tile Connect류 이름이 익숙).
+- 패가 여러 층으로 쌓여 있다. **열린 패**(위가 덮이지 않고 왼쪽이나 오른쪽이 비어 있는 패) 두 장이 같은 **달**(1월 송학 ~ 12월 비)이면 "짝!" 하고 지운다.
+  막힌 패는 살짝 어둡게 보이고, 누르면 흔들리며 이유(위가 덮임 / 양옆이 막힘)를 알려 준다.
+- **쌌다**: 짝을 맞추면 두 장이 그 자리에 `stackWindow`초(2.0→1.2초, 금빛 고리) 동안 포개져 있다. 그 사이 같은 달 열린 패를 하나 더 누르면
+  고스톱처럼 세 장이 뭉쳐 "쌌다!" → 뭉치가 아래 폭탄 칸으로 간다(최대 3, 살짝 벌린 부채 모양). 시간이 지나거나 다른 짝을 맞추면 두 장은 그냥 사라진다.
+- **폭탄**: 폭탄 칸에 있는 달의 패를 판에서 하나 누르면(위만 드러나 있으면 옆이 막혀도 됨) 그 패 1장 + 가까운 드러난 짝(같은 달끼리) 2~5쌍이 한꺼번에 **펑**
+  (`GameScreen.BlastTiles`, 남은 패 24장마다 1쌍 더). 짝 단위라 달마다 장수는 다시 짝수가 된다. 다른 폭탄이 걸린 달은 건드리지 않는다.
+- 제한 시간 안에 다 지우면 클리어. 평가는 **광(光)** 표시: `star3`초 안 3광, `star2`초 안 2광, 그 밖 1광. 부활해서 깨면 1광.
+- 시간 초과 → 보상형 광고로 이어하기(한 판 2번). 둘 곳이 없으면(쓸 수 있는 폭탄도 없으면) 자동으로 섞는다.
+- 배치는 `Rules.Deal`이 "열린 두 자리에 짝을 넣고 비우기"를 거꾸로 되풀이해 만들어 **항상 끝까지 풀린다**. 자동 섞기도 같은 방법이라 섞은 판도 풀린다.
 
 ## 구조
-- `Assets/Scripts/Core` (asmdef `HwatuSolitaire.Core`, UnityEngine 참조 금지): 판, 경로(`PathFinder`), 중력, 규칙·섞기(`Rules`), 풀이기(`Solver`), 스테이지 생성(`StageGenerator`), 별 시간(`StarTimer`).
+- `Assets/Scripts/Core` (asmdef `HwatuSolitaire.Core`, UnityEngine 참조 금지): 자리·판(`Board.cs`: Tile, Layout, Board — 반 칸 단위 좌표와 층),
+  판 모양(`Layouts`: 피라미드·계단·마름모·쌍봉·십자·테두리·탑), 짝·배치·섞기(`Rules`), 풀이기(`Solver`), 스테이지 생성(`StageGenerator`), 광 시간(`StarTimer`).
 - `Assets/Scripts/Game`: 화면은 모두 코드로 조립 (씬에는 `App` 하나). `App` → `TitleScreen` / `StageSelectScreen` / `GameScreen`, 팝업 `Popup`, `Tips`(규칙 안내·설정·크레딧).
   `Art`(화투 아틀라스 + SDF 아이콘), `Ui`, `Anim`, `Fx`, `Sfx`(코드 합성 소리), `Ads`, `Loc`, `Settings`, `Progress`(PlayerPrefs).
-- `Assets/Resources/Stages/stages.json`: 300스테이지 (도구로만 만든다). `Assets/Resources/AdConfig.json`: 광고 ID (docs/ADS.md).
+- `Assets/Resources/Stages/stages.json`: 300스테이지 (자리 tiles + 패 cells, 도구로만 만든다). `Assets/Resources/AdConfig.json`: 광고 ID (docs/ADS.md).
 - `Assets/Resources/Cards/hwatu_atlas.png`: 화투 48장 + 뒷면, 칸 318x516(투명 여백 4px — 기울이거나 줄여도 가장자리가 깨지지 않게) (Tools/Cards/README.md, CC BY-SA 4.0 — 크레딧 표시 필수).
 
 ## 명령

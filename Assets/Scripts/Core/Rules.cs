@@ -4,30 +4,34 @@ namespace HwatuSolitaire.Core
 {
     public readonly struct Move
     {
-        public readonly Cell A, B;
-        public Move(Cell a, Cell b) { A = a; B = b; }
+        public readonly int A, B;
+        public Move(int a, int b) { A = a; B = b; }
         public override string ToString() => A + "-" + B;
     }
 
-    /// <summary>둘 수 있는 짝 찾기, 짝 없애기, 섞기.</summary>
+    /// <summary>둘 수 있는 짝 찾기, 짝 지우기, 섞기, 풀리는 배치 만들기.</summary>
     public static class Rules
     {
-        /// <summary>
-        /// 지금 이을 수 있는 짝을 모두 찾는다. skipMonth가 true인 달은 제외한다 (폭탄이 걸린 달).
-        /// </summary>
+        /// <summary>열린 패끼리 같은 달인 짝을 모두 찾는다. skipMonth가 true인 달은 뺀다 (폭탄이 걸린 달).</summary>
         public static List<Move> FindMoves(Board board, bool[] skipMonth = null, int limit = int.MaxValue)
         {
             var moves = new List<Move>();
-            var byMonth = GroupByMonth(board);
+            var byMonth = new List<int>[Board.Months];
+            for (int i = 0; i < board.Count; i++)
+            {
+                if (!board.Free(i)) continue;
+                int m = Board.Month(board[i]);
+                if (skipMonth != null && skipMonth[m]) continue;
+                (byMonth[m] ?? (byMonth[m] = new List<int>())).Add(i);
+            }
             for (int m = 0; m < Board.Months; m++)
             {
-                if (skipMonth != null && skipMonth[m]) continue;
-                var cells = byMonth[m];
-                for (int i = 0; i < cells.Count; i++)
-                    for (int j = i + 1; j < cells.Count; j++)
+                var list = byMonth[m];
+                if (list == null) continue;
+                for (int i = 0; i < list.Count; i++)
+                    for (int j = i + 1; j < list.Count; j++)
                     {
-                        if (PathFinder.Connect(board, cells[i], cells[j]) == null) continue;
-                        moves.Add(new Move(cells[i], cells[j]));
+                        moves.Add(new Move(list[i], list[j]));
                         if (moves.Count >= limit) return moves;
                     }
             }
@@ -36,61 +40,78 @@ namespace HwatuSolitaire.Core
 
         public static bool HasMove(Board board, bool[] skipMonth = null) => FindMoves(board, skipMonth, 1).Count > 0;
 
-        public static List<Cell>[] GroupByMonth(Board board)
+        public static bool CanMatch(Board board, int a, int b)
+            => a != b && board.Free(a) && board.Free(b) && Board.Month(board[a]) == Board.Month(board[b]);
+
+        public static void Remove(Board board, int a, int b)
         {
-            var byMonth = new List<Cell>[Board.Months];
-            for (int m = 0; m < Board.Months; m++) byMonth[m] = new List<Cell>();
-            for (int y = 0; y < board.Height; y++)
-                for (int x = 0; x < board.Width; x++)
-                {
-                    int v = board[x, y];
-                    if (v >= 0) byMonth[Board.Month(v)].Add(new Cell(x, y));
-                }
-            return byMonth;
+            board[a] = Board.Empty;
+            board[b] = Board.Empty;
         }
 
         /// <summary>
-        /// 두 패를 없애고(아래층 패가 있으면 드러난다) 중력을 적용한다. 미끄러진 패 목록을 돌려준다.
-        /// 2층 판에는 중력을 쓰지 않는다 (StageGenerator가 둘을 함께 내지 않는다).
+        /// 끝까지 풀리는 배치를 거꾸로 만든다: 남은 자리 가운데 "열린" 두 자리를 골라 짝 하나를 넣고 그 자리를 비우기를 되풀이한다.
+        /// 이렇게 고른 순서를 그대로 거꾸로(넣은 순서대로) 지우면 판이 다 지워지므로, 만든 배치는 항상 풀린다.
+        /// slots: 패를 놓을 자리(나머지는 빈 자리로 본다), cards: 놓을 패 (달마다 짝수 장).
+        /// 막히면(열린 자리가 2개 미만) null.
         /// </summary>
-        public static List<Slide> Remove(Board board, Cell a, Cell b, GravityMode gravity)
+        public static int[] Deal(Layout layout, IList<int> slots, IList<int> cards, Rng rng)
         {
-            board.Take(a);
-            board.Take(b);
-            return Gravity.Apply(board, gravity);
-        }
+            var result = new int[layout.Count];
+            var probe = new int[layout.Count];
+            for (int i = 0; i < probe.Length; i++) result[i] = probe[i] = Board.Empty;
+            foreach (int s in slots) probe[s] = 0; // 아직 채울 자리 = "있는 패"로 본다
+            var board = new Board(layout, probe);
 
-        /// <summary>
-        /// 남은 패를 지금 자리들 안에서 섞는다. 둘 수 있는 짝이 생기고, 가능하면 끝까지 풀리는 배치를 고른다.
-        /// 섞은 결과(자리 → 새 패) 대신 판을 직접 바꾼다.
-        /// </summary>
-        public static void Shuffle(Board board, GravityMode gravity, Rng rng, int attempts = 40)
-        {
-            // 위층과 아래층의 패를 모두 모아 같은 자리들에 다시 나눠 준다 (판 모양·층 구조는 그대로).
-            var cells = board.CardCells();
-            var lower = new List<Cell>();
-            foreach (var c in cells) if (board.Under(c) >= 0) lower.Add(c);
-            if (cells.Count < 2) return;
-            var values = new List<int>();
-            foreach (var c in cells) values.Add(board[c]);
-            foreach (var c in lower) values.Add(board.Under(c));
-
-            int[] fallback = null;
-            for (int t = 0; t < attempts; t++)
+            // 달마다 짝을 지어 놓고 순서를 섞는다.
+            var byMonth = new List<int>[Board.Months];
+            foreach (int c in cards) (byMonth[Board.Month(c)] ?? (byMonth[Board.Month(c)] = new List<int>())).Add(c);
+            var pairs = new List<(int, int)>();
+            foreach (var list in byMonth)
             {
-                rng.Shuffle(values);
-                Assign(board, cells, lower, values);
-                if (!HasMove(board)) continue;
-                if (fallback == null) fallback = values.ToArray();
-                if (Solver.Solve(board, gravity, rng.Next(int.MaxValue), 6) != null) return;
+                if (list == null) continue;
+                if (list.Count % 2 == 1) return null;
+                rng.Shuffle(list);
+                for (int i = 0; i < list.Count; i += 2) pairs.Add((list[i], list[i + 1]));
             }
-            if (fallback != null) Assign(board, cells, lower, new List<int>(fallback));
+            rng.Shuffle(pairs);
+
+            var open = new List<int>();
+            foreach (var (c1, c2) in pairs)
+            {
+                open.Clear();
+                for (int i = 0; i < layout.Count; i++) if (board.Free(i)) open.Add(i);
+                if (open.Count < 2) return null;
+                int a = open[rng.Next(open.Count)];
+                open.Remove(a);
+                // 바로 옆 자리끼리만 짝이 되면 너무 쉬워서, 열린 자리 가운데 아무 데나 고른다.
+                int b = open[rng.Next(open.Count)];
+                result[a] = c1;
+                result[b] = c2;
+                board[a] = Board.Empty;
+                board[b] = Board.Empty;
+            }
+            return result;
         }
 
-        static void Assign(Board board, List<Cell> cells, List<Cell> lower, List<int> values)
+        /// <summary>
+        /// 남은 패를 남은 자리 안에서 다시 나눈다 (막혔을 때 자동 섞기). Deal과 같은 방법이라 섞은 판도 항상 끝까지 풀린다.
+        /// </summary>
+        public static void Shuffle(Board board, Rng rng)
         {
-            for (int i = 0; i < cells.Count; i++) board[cells[i]] = values[i];
-            for (int i = 0; i < lower.Count; i++) board.SetUnder(lower[i], values[cells.Count + i]);
+            var slots = board.PresentTiles();
+            var cards = new List<int>();
+            foreach (int s in slots) cards.Add(board[s]);
+            for (int t = 0; t < 60; t++)
+            {
+                var dealt = Deal(board.Layout, slots, cards, rng);
+                if (dealt == null) continue;
+                foreach (int s in slots) board[s] = dealt[s];
+                return;
+            }
+            // 아주 드물게 실패하면 그냥 뒤섞는다.
+            rng.Shuffle(cards);
+            for (int i = 0; i < slots.Count; i++) board[slots[i]] = cards[i];
         }
     }
 }

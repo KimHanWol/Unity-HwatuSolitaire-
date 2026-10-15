@@ -37,7 +37,7 @@ public class AdsSetup : AssetPostprocessor
         if (Array.IndexOf(imported, ConfigPath) >= 0) EditorApplication.delayCall += Sync;
     }
 
-    [MenuItem("Tools/Hwatu Shisen-Sho/Sync AdMob App IDs")]
+    [MenuItem("Tools/Hwatu Solitaire/Sync AdMob App IDs")]
     public static void Sync()
     {
         // 플러그인 안쪽 클래스라 리플렉션으로 접근한다. 플러그인이 없으면 아무 일도 하지 않는다.

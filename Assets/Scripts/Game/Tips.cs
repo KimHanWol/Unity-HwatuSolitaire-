@@ -1,5 +1,4 @@
 using System;
-using HwatuSolitaire.Core;
 using UnityEngine;
 
 /// <summary>처음 보는 규칙을 그 스테이지에서 한 번씩 알려 주는 창, 설정·크레딧 창.</summary>
@@ -33,12 +32,12 @@ public static class Tips
         Pair(p, 0, 3, "=", 300f);
         p.Label(Loc.T("같은 달(같은 꽃) 화투끼리 짝이에요", "Cards of the same month (flower) make a pair"), 46, Art.Ink, 470f, 80f);
         p.Label(Loc.T(
-            "두 장을 차례로 누르면 \"짝!\" 하고 사라져요.\n단, 두 장을 잇는 선이 <color=#C8102E>두 번까지만 꺾여야</color> 하고\n중간에 다른 패가 막고 있으면 안 돼요.\n판 바깥 테두리로 돌아가는 건 괜찮아요.",
-            "Tap two cards to snap them away.\nThe line joining them may turn <color=#C8102E>at most twice</color>\nand must not cross other cards.\nGoing around the outside edge is fine."),
+            "<color=#C8102E>열린 패</color>만 고를 수 있어요:\n위에 다른 패가 덮여 있지 않고,\n왼쪽이나 오른쪽 중 한쪽이 비어 있는 패.\n막힌 패는 조금 어둡게 보여요.",
+            "Only <color=#C8102E>free cards</color> can be picked:\nnothing on top, and an open left or right side.\nBlocked cards look a little darker."),
             40, Art.GreyDark, 680f, 300f);
         p.Label(Loc.T("빨리 깰수록 광을 더 받아요. 3광에 도전!", "Clear fast to collect up to 3 Gwang (光)!"), 44, Art.Red, 900f, 80f);
         p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 1050f, () => p.Close(), 0f, 0f, 140f);
-        p.Button(Loc.T("연속·폭탄 규칙", "Combos & Bombs"), Art.IconBomb, Art.Red, Art.RedDark, 1200f, () => { p.Close(); ShowCombo(); }, 0f, 0f, 120f);
+        p.Button(Loc.T("쌌다·폭탄 규칙", "Stack & Bomb rules"), Art.IconBomb, Art.Red, Art.RedDark, 1200f, () => { p.Close(); ShowCombo(); }, 0f, 0f, 120f);
     }
 
     public static void ShowCombo()
@@ -51,54 +50,6 @@ public static class Tips
             "After a pair, the two cards <color=#C8102E>stay stacked</color> briefly\n(while the gold ring runs down).\n\nTap <color=#C8102E>one more card of that month</color> in time and\nthe three clump up - \"Stacked!\" - into the bomb tray (max 3).\n\nTap a glowing card of a bomb month: it and\nseveral nearby pairs go <color=#C8102E>BOOM</color> at once!"),
             40, Art.GreyDark, 640f, 520f);
         p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 1040f, () => p.Close(), 0f, 0f, 140f);
-    }
-
-    public static void ShowGravity(GravityMode mode)
-    {
-        string dir;
-        switch (mode)
-        {
-            case GravityMode.Down: dir = Loc.T("아래로", "down"); break;
-            case GravityMode.Up: dir = Loc.T("위로", "up"); break;
-            case GravityMode.Left: dir = Loc.T("왼쪽으로", "left"); break;
-            case GravityMode.Right: dir = Loc.T("오른쪽으로", "right"); break;
-            case GravityMode.SplitOut: dir = Loc.T("양옆 바깥으로", "out to both sides"); break;
-            case GravityMode.SplitIn: dir = Loc.T("가운데로", "into the middle"); break;
-            default: dir = Loc.T("위아래 바깥으로", "out to top and bottom"); break;
-        }
-        var p = Popup.Open(new Vector2(900f, 760f), Loc.T("패가 움직여요!", "Cards slide!"), true);
-        p.Label(Loc.T(
-            "이 판은 짝을 맞출 때마다 남은 패가\n<color=#C8102E>" + dir + "</color> 쏠려요.\n움직인 뒤의 모양도 생각하며 맞춰 보세요.\n\n화면 위에 쏠리는 방향이 표시돼요.",
-            "In this board, remaining cards slide\n<color=#C8102E>" + dir + "</color> after each pair.\nThink about where they will land!\n\nThe direction is shown at the top."),
-            42, Art.GreyDark, 360f, 380f);
-        p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 640f, () => p.Close(), 0f, 0f, 130f);
-    }
-
-    public static void ShowLayers()
-    {
-        var p = Popup.Open(new Vector2(900f, 860f), Loc.T("두 겹으로 쌓인 패", "Stacked two deep"), true);
-        float w = 130f, h = w * Art.CardAspect;
-        var back = Ui.Image(p.Panel, Art.Back, new Color(0.85f, 0.8f, 0.8f), "Under");
-        Ui.Place(back.rectTransform, 0.5f, 1f, new Vector2(w, h), new Vector2(10f, -268f));
-        var top = Ui.Image(p.Panel, Art.Card(16), Color.white, "Top");
-        Ui.Place(top.rectTransform, 0.5f, 1f, new Vector2(w, h), new Vector2(0f, -260f));
-        p.Label(Loc.T(
-            "뒷면이 비치는 칸은 패가 두 장 쌓여 있어요.\n위 패를 지우면 아래 패가 뒤집혀 올라와요.\n무엇이 나올지 생각하며 지울 순서를 골라 보세요!",
-            "Cards with a back peeking out are stacked two deep.\nRemove the top one and the card below flips up.\nChoose your order wisely!"),
-            40, Art.GreyDark, 560f, 220f);
-        p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 750f, () => p.Close(), 0f, 0f, 130f);
-    }
-
-    public static void ShowBlocks()
-    {
-        var p = Popup.Open(new Vector2(900f, 820f), Loc.T("엎어진 패", "Face-down cards"), true);
-        var back = Ui.Image(p.Panel, Art.Back, new Color(0.78f, 0.72f, 0.72f), "Back");
-        Ui.Place(back.rectTransform, 0.5f, 1f, new Vector2(130f, 130f * Art.CardAspect), new Vector2(0f, -260f));
-        p.Label(Loc.T(
-            "엎어진 패는 없앨 수 없고\n선이 지나갈 수도 없어요.\n돌아가는 길을 찾아 보세요!",
-            "Face-down cards can't be removed\nand lines can't pass through them.\nFind a way around!"),
-            42, Art.GreyDark, 530f, 220f);
-        p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 710f, () => p.Close(), 0f, 0f, 130f);
     }
 
     /// <summary>설정 창 (타이틀에서). onLanguage: 언어를 바꿨을 때 화면을 다시 그리라고 알린다.</summary>

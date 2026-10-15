@@ -4,15 +4,15 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 게임 화면. 위: 일시정지·스테이지 이름·남은 시간과 별 기준. 가운데: 판. 아래: 쌌다(폭탄) 칸·힌트.
+/// 게임 화면. 위: 일시정지·스테이지 이름·남은 시간과 광 기준. 가운데: 판. 아래: 쌌다(폭탄) 칸·힌트.
 ///
-/// 규칙: 같은 달 화투 두 장을 꺾임 2번 이하의 선(빈칸·판 바깥만 지남)으로 이으면 "짝!" 하고 사라진다.
-/// 쌌다: 짝을 맞추면 두 장이 그 자리에 잠깐(stackWindow초, 고리 시간) 포개져 있다. 그 사이에 같은 달 패를 하나 더 누르면
-/// 고스톱처럼 세 장이 뭉쳐 "쌌다!" → 그 뭉치가 아래 폭탄 칸으로 간다 (최대 3뭉치, 셋째 패는 선 연결 필요 없음).
-/// 폭탄: 폭탄 칸에 있는 달의 패를 판에서 하나 누르면 그 패(뭉친 셋과 합쳐 넷째 장)와, 그 둘레의 짝(달 상관없이 같은 달끼리) 몇 쌍이
-/// 한꺼번에 펑 터진다 (BlastCells). 짝 단위로 지우므로 달마다 장수는 짝수로 돌아온다. 그 뒤 막히면 자동 섞기가 받쳐 준다.
-/// 시간 안에 다 지우면 클리어(걸린 시간으로 별), 시간이 다 되면 실패 → 광고 보고 시간 더 받아 이어하기.
-/// 둘 곳이 없으면(폭탄도 없으면) 자동으로 섞는다.
+/// 규칙(화투 솔리테어, 상하이 방식): 패가 여러 층으로 쌓여 있다. 위가 덮이지 않고 왼쪽이나 오른쪽이 비어 있는 "열린 패"
+/// 두 장이 같은 달이면 "짝!" 하고 지운다. 막힌 패는 살짝 어둡게 보인다.
+/// 쌌다: 짝을 맞추면 두 장이 그 자리에 잠깐(stackWindow초, 고리 시간) 포개져 있다. 그 사이에 같은 달 열린 패를 하나 더 누르면
+/// 고스톱처럼 세 장이 뭉쳐 "쌌다!" → 그 뭉치가 아래 폭탄 칸으로 간다 (최대 3뭉치).
+/// 폭탄: 폭탄 칸에 있는 달의 패를 판에서 하나 누르면(위만 안 덮여 있으면 옆이 막혀도 된다) 그 패와 둘레의 짝 몇 쌍이 한꺼번에 펑.
+/// 짝 단위로 지우므로 달마다 장수는 짝수로 돌아온다. 막히면(폭탄도 못 쓰면) 자동으로 섞는데, 섞은 판도 늘 풀린다(Rules.Shuffle).
+/// 시간 안에 다 지우면 클리어(걸린 시간으로 광), 시간이 다 되면 실패 → 광고 보고 시간 더 받아 이어하기.
 /// </summary>
 public class GameScreen : MonoBehaviour, IBackHandler
 {
@@ -22,18 +22,17 @@ public class GameScreen : MonoBehaviour, IBackHandler
 
     StageDef def;
     Board board;
-    GravityMode gravity;
     Rng rng;
 
-    CardView[,] views;
-    readonly List<CardView> blockViews = new List<CardView>();
-    // 2층 판: 위 패 밑으로 살짝 비치는 아래층 뒷면
-    Image[,] underViews;
+    // 자리 번호(Layout.Tiles 순서)마다 그 자리 패 (지워졌으면 null)
+    CardView[] views;
     CardView selected;
     CardView[] hint;
 
-    RectTransform boardArea, shakeRoot, boardRoot, pathLayer;
+    RectTransform boardArea, shakeRoot, boardRoot;
+    // 패 한 장 크기(cellW x cellH)와 층마다 비키는 거리
     float cellW, cellH;
+    Vector2 layerShift, boardOrigin;
 
     float elapsed, bonusTime;
     bool running, finished;
@@ -78,7 +77,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
     {
         def = stage;
         board = def.CreateBoard();
-        gravity = def.Gravity;
         rng = new Rng(def.number * 31 + System.Environment.TickCount);
         BuildHud();
         BuildBoard();
@@ -117,31 +115,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
         chapterText = Ui.Text(top, Loc.T((chapter + 1) + "월 · ", "") + Art.MonthName(chapter) + "  " + (chapter + 1) + "-" + inChapter, 38, Art.Gold, TextAnchor.MiddleCenter, "Chapter");
         Ui.Place(chapterText.rectTransform, 0.5f, 0.5f, new Vector2(600f, 50f), new Vector2(0f, -40f));
         Ui.Outline(chapterText, Art.WoodDark, 2f);
-
-        // 중력 방향 표시
-        if (gravity != GravityMode.None)
-        {
-            var g = Ui.Rect("Gravity", top);
-            Ui.Place(g, 0f, 0.5f, new Vector2(96f, 96f), new Vector2(215f, -4f));
-            var gbg = Ui.Image(g, Art.Circle128, new Color(0f, 0f, 0f, 0.35f), "Bg");
-            Ui.Stretch(gbg.rectTransform);
-            void Arrow(float angle, Vector2 offset, float size)
-            {
-                var a = Ui.Image(g, Art.IconBack, Art.Gold, "Arrow");
-                Ui.Place(a.rectTransform, 0.5f, 0.5f, new Vector2(size, size), offset);
-                a.rectTransform.localEulerAngles = new Vector3(0f, 0f, angle);
-            }
-            switch (gravity)
-            {
-                case GravityMode.Left: Arrow(0f, Vector2.zero, 64f); break;
-                case GravityMode.Right: Arrow(180f, Vector2.zero, 64f); break;
-                case GravityMode.Down: Arrow(90f, Vector2.zero, 64f); break;
-                case GravityMode.Up: Arrow(-90f, Vector2.zero, 64f); break;
-                case GravityMode.SplitOut: Arrow(0f, new Vector2(-18f, 0f), 44f); Arrow(180f, new Vector2(18f, 0f), 44f); break;
-                case GravityMode.SplitIn: Arrow(180f, new Vector2(-18f, 0f), 44f); Arrow(0f, new Vector2(18f, 0f), 44f); break;
-                case GravityMode.SplitVertical: Arrow(-90f, new Vector2(0f, 18f), 44f); Arrow(90f, new Vector2(0f, -18f), 44f); break;
-            }
-        }
 
         // 오른쪽 위: 광 3개 (지금 속도면 몇 광인지)
         hudStars = new Image[3];
@@ -254,8 +227,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
         Ui.Stretch(shakeRoot);
         boardRoot = Ui.Rect("Board", shakeRoot);
         Ui.Place(boardRoot, 0.5f, 0.5f, Vector2.zero);
-        pathLayer = Ui.Rect("Paths", shakeRoot);
-        Ui.Place(pathLayer, 0.5f, 0.5f, Vector2.zero);
 
         toast = Ui.Text(rt, "", 48, Color.white, TextAnchor.MiddleCenter, "Toast");
         Ui.Place(toast.rectTransform, 0.5f, 0f, new Vector2(1000f, 80f), new Vector2(0f, BottomBar + 50f));
@@ -265,58 +236,71 @@ public class GameScreen : MonoBehaviour, IBackHandler
 
     void BuildBoard()
     {
-        views = new CardView[def.width, def.height];
-        underViews = new Image[def.width, def.height];
+        var layout = def.Layout;
+        views = new CardView[layout.Count];
         ComputeCell();
-        for (int y = 0; y < def.height; y++)
-            for (int x = 0; x < def.width; x++)
-            {
-                int v = board[x, y];
-                if (v == Board.Empty) continue;
-                // 아래층 뒷면은 자기 패 바로 앞에 그려야 먼저 그려진 왼쪽·위 이웃 패 위로 비친다.
-                if (board.Under(new Cell(x, y)) >= 0) CreateUnder(new Cell(x, y), (x + y) * 0.025f);
-                var view = CardView.Create(boardRoot, v, CardSize);
-                view.Cell = new Cell(x, y);
-                view.Rt.anchoredPosition = CellPos(x, y);
-                view.Pressed = OnCardPressed;
-                if (v == Board.Block) blockViews.Add(view);
-                else views[x, y] = view;
+        // 아래층부터, 같은 층은 위쪽 줄·왼쪽부터 그려야 위층 패가 아래 패를 덮는다.
+        var order = new List<int>();
+        for (int i = 0; i < layout.Count; i++) order.Add(i);
+        order.Sort((a, b) =>
+        {
+            Tile ta = layout.Tiles[a], tb = layout.Tiles[b];
+            if (ta.Z != tb.Z) return ta.Z.CompareTo(tb.Z);
+            if (ta.Y != tb.Y) return ta.Y.CompareTo(tb.Y);
+            return ta.X.CompareTo(tb.X);
+        });
+        foreach (int i in order)
+        {
+            if (!board.Present(i)) continue;
+            var view = CardView.Create(boardRoot, board[i], CardSize);
+            view.Index = i;
+            view.Pressed = OnCardPressed;
+            views[i] = view;
+            Vector2 target = TilePos(i);
+            view.Rt.anchoredPosition = target;
 
-                // 처음에 패를 돌리듯 차례로 날아와 앉는다.
-                float delay = (x + y) * 0.025f;
-                Vector2 target = CellPos(x, y);
-                view.Rt.localScale = Vector3.zero;
-                Anim.Run(view.Rt, 0.32f, t =>
-                {
-                    float e = Anim.OutBack(t);
-                    view.Rt.localScale = Vector3.one * e;
-                    view.Rt.anchoredPosition = Vector2.LerpUnclamped(target + new Vector2(0f, 220f), target, Anim.OutCubic(t));
-                }, null, delay);
-            }
+            // 처음에 패를 돌리듯 층마다 차례로 날아와 앉는다.
+            Tile t = layout.Tiles[i];
+            float delay = t.Z * 0.18f + (t.X + t.Y) * 0.012f;
+            view.Rt.localScale = Vector3.zero;
+            Anim.Run(view.Rt, 0.32f, k =>
+            {
+                view.Rt.localScale = Vector3.one * Anim.OutBack(k);
+                view.Rt.anchoredPosition = Vector2.LerpUnclamped(target + new Vector2(0f, 220f), target, Anim.OutCubic(k));
+            }, null, delay);
+        }
+        RefreshFree(true);
         Anim.Delay(this, 0.1f, Sfx.Shuffle);
     }
 
-    Vector2 CardSize => new Vector2(cellW * 0.94f, cellH * 0.94f);
+    Vector2 CardSize => new Vector2(cellW * 0.97f, cellH * 0.97f);
 
+    /// <summary>판이 화면에 꽉 차게 패 크기를 정한다. 층마다 왼쪽 위로 조금씩 비켜 쌓인 두께도 넣는다.</summary>
     void ComputeCell()
     {
+        var layout = def.Layout;
         Rect area = boardArea.rect;
         float aw = Mathf.Max(100f, area.width), ah = Mathf.Max(100f, area.height);
-        // 판 바깥으로 도는 선이 보이도록 양쪽에 칸 반쯤 여유
-        cellW = Mathf.Min(aw / (def.width + 0.9f), ah / ((def.height + 0.9f) * Art.CardAspect));
-        cellW = Mathf.Min(cellW, 190f);
+        float cols = (layout.MaxX - layout.MinX) / 2f, rows = (layout.MaxY - layout.MinY) / 2f;
+        int z = layout.MaxZ;
+        const float shiftX = 0.11f, shiftY = 0.07f; // 패 크기에 대한 한 층의 비킴
+        cellW = Mathf.Min(aw / (cols + z * shiftX + 0.15f), ah / ((rows + z * shiftY + 0.15f) * Art.CardAspect));
+        cellW = Mathf.Min(cellW, 200f);
         cellH = cellW * Art.CardAspect;
+        layerShift = new Vector2(-cellW * shiftX, cellH * shiftY);
+        // 판 전체(층 비킴 포함)의 가운데가 화면 가운데에 오게
+        float width = cols * cellW + z * cellW * shiftX, height = rows * cellH + z * cellH * shiftY;
+        boardOrigin = new Vector2(-width / 2f + z * cellW * shiftX + cellW / 2f, height / 2f - z * cellH * shiftY - cellH / 2f);
     }
 
-    /// <summary>칸 중심의 판 안 좌표. 판 바깥(-1, width)은 칸 0.6개만큼만 나간다.</summary>
-    Vector2 CellPos(float x, float y)
+    /// <summary>자리 i의 판 안 좌표 (패 가운데).</summary>
+    Vector2 TilePos(int i)
     {
-        float fx = x < 0 ? -0.62f : x >= def.width ? def.width - 1 + 0.62f : x;
-        float fy = y < 0 ? -0.62f : y >= def.height ? def.height - 1 + 0.62f : y;
-        return new Vector2((fx - (def.width - 1) * 0.5f) * cellW, ((def.height - 1) * 0.5f - fy) * cellH);
+        var layout = def.Layout;
+        Tile t = layout.Tiles[i];
+        float x = (t.X - layout.MinX) / 2f * cellW, y = -(t.Y - layout.MinY) / 2f * cellH;
+        return boardOrigin + new Vector2(x, y) + layerShift * t.Z;
     }
-
-    Vector2 CellPos(Cell c) => CellPos(c.X, c.Y);
 
     void Relayout()
     {
@@ -325,81 +309,43 @@ public class GameScreen : MonoBehaviour, IBackHandler
         foreach (var v in AllViews())
         {
             v.Rt.sizeDelta = CardSize;
-            v.Rt.anchoredPosition = CellPos(v.Cell);
+            v.Rt.anchoredPosition = TilePos(v.Index);
         }
-        for (int y = 0; y < def.height; y++)
-            for (int x = 0; x < def.width; x++)
-                if (underViews[x, y] != null) PlaceUnder(underViews[x, y].rectTransform, new Cell(x, y));
-    }
-
-    // ------------------------------------------------------------ 2층
-    /// <summary>
-    /// 아래층 패는 위 패보다 살짝 왼쪽 위로 비켜 뒷면 가장자리만 보이게 깐다.
-    /// (패는 왼쪽 위부터 차례로 그리므로, 오른쪽 아래로 비키면 다음 이웃 패에 가려진다.)
-    /// </summary>
-    void PlaceUnder(RectTransform rt, Cell c)
-    {
-        rt.sizeDelta = CardSize;
-        rt.anchoredPosition = CellPos(c) + new Vector2(-cellW * 0.11f, cellH * 0.075f);
-    }
-
-    void CreateUnder(Cell c, float delay)
-    {
-        // 위 패의 붉은 테두리와 섞이지 않게 어둡게 칠해 "두께"처럼 보이게 한다.
-        var img = Ui.Image(boardRoot, Art.Back, new Color(0.68f, 0.5f, 0.48f), "Under");
-        img.rectTransform.anchorMin = img.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-        PlaceUnder(img.rectTransform, c);
-        underViews[c.X, c.Y] = img;
-        var rt = img.rectTransform;
-        rt.localScale = Vector3.zero;
-        Anim.Run(rt, 0.3f, t => rt.localScale = Vector3.one * Anim.OutBack(t), null, delay);
-    }
-
-    /// <summary>
-    /// 위 패가 빠진 칸들: 아래층 패가 올라왔으면 그 자리에 새 패를 놓고 뒷면에서 뒤집어 보여 준다.
-    /// (모델은 이미 Board.Take로 바뀌어 있다.)
-    /// </summary>
-    void RevealUnder(IEnumerable<Cell> removed, float delay)
-    {
-        foreach (var c in removed)
-        {
-            if (underViews[c.X, c.Y] == null || board[c] < 0) continue;
-            var under = underViews[c.X, c.Y];
-            underViews[c.X, c.Y] = null;
-            var view = CardView.Create(boardRoot, board[c], CardSize);
-            view.Cell = c;
-            view.Pressed = OnCardPressed;
-            views[c.X, c.Y] = view;
-            view.Rt.anchoredPosition = under.rectTransform.anchoredPosition;
-            Vector2 target = CellPos(c);
-            var rt = view.Rt;
-            Anim.Run(rt, 0.22f, t => rt.anchoredPosition = Vector2.Lerp(under.rectTransform.anchoredPosition, target, Anim.OutCubic(t)), () =>
-            {
-                if (under != null) Destroy(under.gameObject);
-            }, delay);
-            view.FlipFromBack(delay);
-        }
-        RefreshBombMarks();
     }
 
     IEnumerable<CardView> AllViews()
     {
-        foreach (var b in blockViews) yield return b;
-        for (int y = 0; y < def.height; y++)
-            for (int x = 0; x < def.width; x++)
-                if (views[x, y] != null) yield return views[x, y];
+        foreach (var v in views) if (v != null) yield return v;
+    }
+
+    /// <summary>열린 패는 밝게, 막힌 패는 살짝 어둡게.</summary>
+    void RefreshFree(bool instant = false)
+    {
+        foreach (var v in AllViews()) v.SetBlocked(!board.Free(v.Index), instant);
     }
 
     // ------------------------------------------------------------ 입력
     void OnCardPressed(CardView view)
     {
         if (Paused || finished) return;
-        if (views[view.Cell.X, view.Cell.Y] != view) return;
+        int i = view.Index;
+        if (views[i] != view) return;
         int month = Board.Month(view.Value);
 
-        if (bombs.Contains(month))
+        // 폭탄 달: 위만 덮여 있지 않으면 옆이 막혀 있어도 터뜨릴 수 있다.
+        if (bombs.Contains(month) && board.Exposed(i))
         {
-            Detonate(view.Cell, month);
+            Detonate(i, month);
+            return;
+        }
+
+        if (!board.Free(i))
+        {
+            Sfx.Deny();
+            view.Wiggle();
+            ShowToast(board.Exposed(i)
+                ? Loc.T("양옆이 막힌 패예요", "Blocked on both sides")
+                : Loc.T("위에 다른 패가 덮고 있어요", "Covered by another card"));
             return;
         }
 
@@ -427,19 +373,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         }
         if (Board.Month(selected.Value) == month)
         {
-            var path = PathFinder.FindPath(board, selected.Cell, view.Cell);
-            if (path != null)
-            {
-                Match(selected, view, path);
-                return;
-            }
-            // 같은 달인데 길이 막혔다.
-            Sfx.Deny();
-            selected.Wiggle();
-            view.Wiggle();
-            ShowToast(Loc.T("길이 막혔어요 (꺾임 2번까지)", "Blocked! (max 2 turns)"));
-            selected.Selected = false;
-            selected = null;
+            Match(selected, view);
             return;
         }
         Select(view);
@@ -455,20 +389,18 @@ public class GameScreen : MonoBehaviour, IBackHandler
     }
 
     // ------------------------------------------------------------ 짝
-    void Match(CardView a, CardView b, List<Cell> path)
+    void Match(CardView a, CardView b)
     {
         ClearHint();
         selected = null;
         a.Selected = false;
-        views[a.Cell.X, a.Cell.Y] = null;
-        views[b.Cell.X, b.Cell.Y] = null;
+        views[a.Index] = null;
+        views[b.Index] = null;
         int month = Board.Month(a.Value);
 
         matches++;
         // 앞서 기다리던 뭉치는 여기서 끝난다.
         FinishPending();
-
-        DrawPath(path, new Color(1f, 0.86f, 0.3f), 0.35f);
 
         // a를 들어 b 위로 "짝!" 내리친다.
         a.Rt.SetAsLastSibling();
@@ -478,9 +410,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
         Vector2 from = a.Rt.anchoredPosition, to = b.Rt.anchoredPosition;
         const float fly = 0.15f;
 
-        Cell cellA = a.Cell, cellB = b.Cell;
-        var slides = Rules.Remove(board, cellA, cellB, gravity);
-        RevealUnder(new[] { cellA, cellB }, fly + 0.12f);
+        Rules.Remove(board, a.Index, b.Index);
+        RefreshFree();
         // 판에 같은 달이 더 남아 있으면 두 장이 잠깐 포개져 셋째 패를 기다린다.
         Pending p = null;
         if (board.CountMonth(month) > 0 && def.stackWindow > 0f)
@@ -511,7 +442,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
             }
         });
 
-        AnimateSlides(slides, fly + 0.06f);
         AfterRemoval(fly + 0.3f);
     }
 
@@ -572,12 +502,11 @@ public class GameScreen : MonoBehaviour, IBackHandler
         if (selected != null) { selected.Selected = false; selected = null; }
         if (p.ring != null) Destroy(p.ring.gameObject);
 
-        views[third.Cell.X, third.Cell.Y] = null;
-        board.Take(third.Cell);
-        RevealUnder(new[] { third.Cell }, 0.25f);
+        views[third.Index] = null;
+        board[third.Index] = Board.Empty;
         NoHit(third);
         third.Rt.SetAsLastSibling();
-        var slides = Gravity.Apply(board, gravity);
+        RefreshFree();
 
         bombs.Add(p.month);
         bombCards.Add(new[] { p.b != null ? p.b.Value : third.Value, p.a != null ? p.a.Value : third.Value, third.Value });
@@ -640,7 +569,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
         });
 
         RefreshBombMarks();
-        AnimateSlides(slides, fly + 0.06f);
         AfterRemoval(fly + 0.3f);
     }
 
@@ -652,33 +580,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
         {
             rt.localScale = start * (1f - Anim.InCubic(t));
         }, () => Destroy(v.gameObject));
-    }
-
-    void AnimateSlides(List<Slide> slides, float delay)
-    {
-        if (slides.Count == 0) return;
-        // 옮긴 순서대로 따라가야 같은 패를 두 번 옮겨도 맞는다.
-        var moved = new List<(CardView view, Vector2 to)>();
-        foreach (var s in slides)
-        {
-            var v = views[s.From.X, s.From.Y];
-            if (v == null) continue;
-            views[s.From.X, s.From.Y] = null;
-            views[s.To.X, s.To.Y] = v;
-            v.Cell = s.To;
-            moved.Add((v, CellPos(s.To)));
-        }
-        Anim.Delay(this, delay, Sfx.Slide);
-        foreach (var (view, to) in moved)
-        {
-            var rt = view.Rt;
-            Vector2? start = null;
-            Anim.Run(rt, 0.2f, t =>
-            {
-                if (start == null) start = rt.anchoredPosition;
-                rt.anchoredPosition = Vector2.Lerp(start.Value, to, Anim.OutCubic(t));
-            }, () => rt.anchoredPosition = to, delay);
-        }
     }
 
     /// <summary>패가 없어진 뒤: 다 지웠으면 클리어, 둘 곳이 없으면 섞기.</summary>
@@ -705,7 +606,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
     {
         if (finished || board.Cleared) return;
         if (Rules.HasMove(board, BombMask())) return;
-        if (bombs.Count > 0)
+        if (BombUsable())
         {
             ShowToast(Loc.T("짝이 없어요! 폭탄을 써 보세요", "No pairs! Use a bomb"));
             foreach (var s in traySlots) Anim.Pop(s, 0.25f, 0.4f);
@@ -714,22 +615,27 @@ public class GameScreen : MonoBehaviour, IBackHandler
         ShuffleBoard();
     }
 
+    /// <summary>폭탄 칸의 달 가운데 판에서 위가 드러난 패가 있는지.</summary>
+    bool BombUsable()
+    {
+        foreach (int m in bombs)
+            foreach (int i in board.TilesOfMonth(m))
+                if (board.Exposed(i)) return true;
+        return false;
+    }
+
     void ShuffleBoard()
     {
         ClearHint();
         if (selected != null) { selected.Selected = false; selected = null; }
         ShowToast(Loc.T("짝이 없어서 패를 섞어요!", "No pairs left - shuffling!"));
-        Rules.Shuffle(board, gravity, rng);
+        Rules.Shuffle(board, rng);
         Sfx.Shuffle();
-        int i = 0;
-        for (int y = 0; y < def.height; y++)
-            for (int x = 0; x < def.width; x++)
-            {
-                var v = views[x, y];
-                if (v == null) continue;
-                v.FlipTo(board[x, y], i++ * 0.02f);
-            }
+        int n = 0;
+        for (int i = 0; i < views.Length; i++)
+            if (views[i] != null) views[i].FlipTo(board[i], n++ * 0.015f);
         RefreshBombMarks();
+        RefreshFree();
     }
 
     // ------------------------------------------------------------ 폭탄
@@ -753,7 +659,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
     void RefreshBombMarks()
     {
         foreach (var v in AllViews())
-            if (!v.IsBlock) v.Bomb = bombs.Contains(Board.Month(v.Value));
+            v.Bomb = bombs.Contains(Board.Month(v.Value));
     }
 
     void PeekBomb(int index)
@@ -761,11 +667,11 @@ public class GameScreen : MonoBehaviour, IBackHandler
         if (index >= bombs.Count || Paused) return;
         Sfx.Click();
         foreach (var v in AllViews())
-            if (!v.IsBlock && Board.Month(v.Value) == bombs[index]) Anim.Pop(v.Rt, 0.2f, 0.35f);
+            if (Board.Month(v.Value) == bombs[index]) Anim.Pop(v.Rt, 0.2f, 0.35f);
         ShowToast(Loc.T("빛나는 패를 누르면 펑!", "Tap a glowing card to blast!"));
     }
 
-    void Detonate(Cell origin, int month)
+    void Detonate(int origin, int month)
     {
         ClearHint();
         if (selected != null) { selected.Selected = false; selected = null; }
@@ -777,7 +683,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
             var flyer = Ui.Image(Fx.Layer != null ? Fx.Layer : (RectTransform)transform, Art.Card(bombCards[slotIndex][2]), Color.white, "BombFly");
             flyer.rectTransform.sizeDelta = new Vector2(80f, 80f * Art.CardAspect);
             flyer.rectTransform.position = fromSlot.position;
-            Vector3 start = fromSlot.position, end = views[origin.X, origin.Y].Rt.position;
+            Vector3 start = fromSlot.position, end = views[origin].Rt.position;
             Anim.Run(flyer, 0.18f, t =>
             {
                 flyer.rectTransform.position = Vector3.Lerp(start, end, Anim.InCubic(t));
@@ -791,16 +697,16 @@ public class GameScreen : MonoBehaviour, IBackHandler
         }
         RefreshTray();
 
-        var cells = BlastCells(origin);
+        var cells = BlastTiles(origin);
         float last = 0f;
         Settings.Haptic(90, 255);
         Fx.Shake(shakeRoot, cellW * 0.25f, 0.45f);
-        Fx.PopText(views[origin.X, origin.Y].Rt.position, Loc.T("펑!", "BOOM!"), 130, Art.Gold, Art.RedDark, 180f, 1.1f);
+        Fx.PopText(views[origin].Rt.position, Loc.T("펑!", "BOOM!"), 130, Art.Gold, Art.RedDark, 180f, 1.1f);
         foreach (var c in cells)
         {
-            var v = views[c.X, c.Y];
-            views[c.X, c.Y] = null;
-            board.Take(c);
+            var v = views[c];
+            views[c] = null;
+            board[c] = Board.Empty;
             if (v == null) continue;
             float delay = Dist(c, origin) * 0.07f;
             last = Mathf.Max(last, delay);
@@ -821,76 +727,50 @@ public class GameScreen : MonoBehaviour, IBackHandler
                 Destroy(v.gameObject);
             }, delay);
         }
-        RevealUnder(cells, last + 0.25f);
-        var slides = Gravity.Apply(board, gravity);
-        AnimateSlides(slides, last + 0.25f);
         RefreshBombMarks();
+        RefreshFree();
         AfterRemoval(last + 0.45f);
     }
 
     /// <summary>
-    /// 폭탄에 터질 칸: 누른 패 1장(뭉친 세 장과 합쳐 그 달이 짝수가 된다) + 가까운 곳부터 고른 같은 달 짝 몇 쌍(달 상관없이).
-    /// 짝 단위로만 지우므로 달마다 남은 장수가 짝수로 유지된다. 다른 폭탄이 걸린 달은 그 폭탄을 쓸 패가 남도록 건드리지 않는다.
-    /// 쌍 수는 판 크기에 따라 2~5쌍 (남은 패 24장마다 1쌍 더).
+    /// 폭탄에 터질 패: 누른 패 1장(뭉친 세 장과 합쳐 그 달이 짝수가 된다) + 가까운 곳부터 고른 같은 달 짝 몇 쌍(달 상관없이).
+    /// 위가 드러난 패만 고른다 (덮인 패가 먼저 사라지면 이상하므로). 짝 단위라 달마다 장수는 짝수로 유지된다.
+    /// 다른 폭탄이 걸린 달은 그 폭탄을 쓸 패가 남도록 건드리지 않는다. 쌍 수는 2~5쌍 (남은 패 24장마다 1쌍 더).
     /// </summary>
-    List<Cell> BlastCells(Cell origin)
+    List<int> BlastTiles(int origin)
     {
-        var result = new List<Cell> { origin };
+        var result = new List<int> { origin };
         int pairs = Mathf.Clamp(2 + board.CardCount / 24, 2, 5);
-        var near = board.CardCells();
-        near.Remove(origin);
+        var near = new List<int>();
+        for (int i = 0; i < board.Count; i++) if (i != origin && board.Exposed(i)) near.Add(i);
         near.Sort((p, q) => Dist(p, origin).CompareTo(Dist(q, origin)));
-        var waiting = new Cell?[Board.Months];
-        foreach (var c in near)
+        var waiting = new int[Board.Months];
+        for (int m = 0; m < waiting.Length; m++) waiting[m] = -1;
+        foreach (int c in near)
         {
             if (pairs <= 0) break;
             int m = Board.Month(board[c]);
             if (bombs.Contains(m)) continue;
-            if (waiting[m] == null)
+            if (waiting[m] < 0)
             {
                 waiting[m] = c;
                 continue;
             }
-            result.Add(waiting[m].Value);
+            result.Add(waiting[m]);
             result.Add(c);
-            waiting[m] = null;
+            waiting[m] = -1;
             pairs--;
         }
         result.Sort((p, q) => Dist(p, origin).CompareTo(Dist(q, origin)));
         return result;
     }
 
-    static float Dist(Cell a, Cell b) => Mathf.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
-
-    // ------------------------------------------------------------ 선 그리기
-    void DrawPath(List<Cell> path, Color color, float life)
+    /// <summary>두 자리 사이 거리 (패 칸 단위, 층은 무시).</summary>
+    float Dist(int a, int b)
     {
-        var line = Ui.Rect("Path", pathLayer);
-        Ui.Stretch(line);
-        var group = line.gameObject.AddComponent<CanvasGroup>();
-        group.blocksRaycasts = false;
-        float thick = Mathf.Max(8f, cellW * 0.14f);
-        for (int pass = 0; pass < 2; pass++)
-        {
-            float w = pass == 0 ? thick * 2.6f : thick;
-            Color c = pass == 0 ? new Color(color.r, color.g * 0.7f, color.b * 0.3f, 0.45f) : color;
-            for (int i = 0; i < path.Count; i++)
-            {
-                Vector2 p = CellPos(path[i]);
-                var dot = Ui.Image(line, Art.Circle128, c, "Joint");
-                Ui.Place(dot.rectTransform, 0.5f, 0.5f, new Vector2(w, w), p);
-                if (i == 0) continue;
-                Vector2 q = CellPos(path[i - 1]);
-                var seg = Ui.Image(line, null, c, "Seg");
-                var rt = seg.rectTransform;
-                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-                rt.anchoredPosition = (p + q) * 0.5f;
-                Vector2 d = p - q;
-                rt.sizeDelta = new Vector2(d.magnitude, w);
-                rt.localEulerAngles = new Vector3(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
-            }
-        }
-        Anim.Run(line, life, t => group.alpha = t < 0.5f ? 1f : 1f - (t - 0.5f) * 2f, () => Destroy(line.gameObject));
+        Tile ta = def.Layout.Tiles[a], tb = def.Layout.Tiles[b];
+        float dx = (ta.X - tb.X) / 2f, dy = (ta.Y - tb.Y) / 2f;
+        return Mathf.Sqrt(dx * dx + dy * dy);
     }
 
     // ------------------------------------------------------------ 힌트
@@ -921,7 +801,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
     bool ShowHint()
     {
         ClearHint();
-        var move = Solver.Hint(board, gravity, BombMask(), rng.Next(int.MaxValue));
+        var move = Solver.Hint(board, BombMask(), rng.Next(int.MaxValue));
         if (move == null)
         {
             if (bombs.Count > 0)
@@ -932,10 +812,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
             return false;
         }
         var m = move.Value;
-        hint = new[] { views[m.A.X, m.A.Y], views[m.B.X, m.B.Y] };
+        hint = new[] { views[m.A], views[m.B] };
         foreach (var v in hint) if (v != null) v.Hinted = true;
-        var path = PathFinder.Connect(board, m.A, m.B);
-        if (path != null) DrawPath(path, new Color(0.5f, 0.95f, 1f), 1.2f);
         Sfx.Hint();
         return true;
     }
@@ -1151,9 +1029,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
     {
         if (def.number == 1) Tips.ShowOnce("rules", Tips.ShowRules);
         else if (def.number == 2) Tips.ShowOnce("stack", Tips.ShowCombo);
-        else if (board.HasLayers) Tips.ShowOnce("layers", Tips.ShowLayers);
-        else if (gravity != GravityMode.None) Tips.ShowOnce("gravity", () => Tips.ShowGravity(gravity));
-        else if (blockViews.Count > 0) Tips.ShowOnce("blocks", Tips.ShowBlocks);
     }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -1168,8 +1043,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
         var m = moves.Find(x => board.CountMonth(Board.Month(board[x.A])) >= 4);
         if (m.A == m.B) m = moves[0];
         if (selected != null) { selected.Selected = false; selected = null; }
-        OnCardPressed(views[m.A.X, m.A.Y]);
-        OnCardPressed(views[m.B.X, m.B.Y]);
+        OnCardPressed(views[m.A]);
+        OnCardPressed(views[m.B]);
         return true;
     }
 
@@ -1177,25 +1052,23 @@ public class GameScreen : MonoBehaviour, IBackHandler
     public bool DevStackThird()
     {
         if (pending == null) return false;
-        var cells = board.CellsOfMonth(pending.month);
-        if (cells.Count == 0) return false;
-        OnCardPressed(views[cells[0].X, cells[0].Y]);
-        return true;
+        foreach (int i in board.TilesOfMonth(pending.month))
+            if (board.Free(i)) { OnCardPressed(views[i]); return true; }
+        return false;
     }
 
     /// <summary>폭탄 칸의 첫 폭탄을 터뜨린다.</summary>
     public bool DevDetonate()
     {
         if (bombs.Count == 0) return false;
-        var cells = board.CellsOfMonth(bombs[0]);
-        if (cells.Count == 0) return false;
-        OnCardPressed(views[cells[0].X, cells[0].Y]);
-        return true;
+        foreach (int i in board.TilesOfMonth(bombs[0]))
+            if (board.Exposed(i)) { OnCardPressed(views[i]); return true; }
+        return false;
     }
 
     public void DevSelectFirst()
     {
-        foreach (var v in AllViews()) if (!v.IsBlock) { OnCardPressed(v); return; }
+        foreach (var v in AllViews()) if (board.Free(v.Index)) { OnCardPressed(v); return; }
     }
 
     public void DevHint() => ShowHint();
@@ -1203,7 +1076,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
     public void DevPause() => OpenPause();
     public void DevWin()
     {
-        foreach (var c in board.CardCells()) { board.Take(c); board.Take(c); }
+        for (int i = 0; i < board.Count; i++) board[i] = Board.Empty;
         finished = true;
         running = false;
         Win();

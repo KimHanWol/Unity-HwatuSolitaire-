@@ -4,9 +4,9 @@
 
 | 파일 | 쓰임 | 만든 방법 |
 |---|---|---|
-| snap, snap2, snap3 | 짝을 맞출 때 "짝!" (셋 중 무작위) | 뺨 치는 소리에서 가장 밝은 한 대씩 잘라, 아주 짧게 끊고 몸통을 올려 세게 (달라붙는 느낌) |
-| stack_slap | 쌌다 (한 번) | 같은 뺨 소리 한 대를 짝보다 묵직하고 조금 길게 |
-| stamp, stamp2, stamp3 | 클리어 창에서 광이 하나씩 찍힐 때 | Kenney impactWood_heavy (나무 도장 쿵), 찍힐수록 조금씩 높게 |
+| snap, snap2, snap3 | 짝을 맞출 때 "쨕!" (셋 중 무작위) | 뺨 치는 소리에서 가장 밝은 한 대씩 잘라, 낮은 쿵을 빼고 고음·때리는 순간을 키워 아주 짧게 |
+| stack_slap | 쌌다 (한 번) | 같은 뺨 소리 한 대를 짝보다 크고 조금 길게 (쿵 없이) |
+| stamp, stamp2, stamp3 | 클리어 창에서 광이 하나씩 찍힐 때 | Kenney chips-stack (칩·동전 차르륵), 찍힐수록 조금씩 높게 |
 | select | 패 고르기 | Kenney card-slide 앞부분 |
 | shuffle | 섞기, 판 깔기 | Kenney card-shuffle |
 

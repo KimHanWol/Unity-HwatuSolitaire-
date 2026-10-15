@@ -98,41 +98,59 @@ function write(name, x, quality = 6) {
 }
 
 // ------------------------------------------------------------ 짝 (뺨·박수 한 대)
+/** 맨 앞 attack초를 gain배로 키웠다가 release초에 걸쳐 1배로 (때리는 순간을 또렷하게 = "찰진" 느낌). */
+function punchUp(x, gain, attack, release) {
+  for (let i = 0; i < x.length; i++) {
+    const t = i / SR;
+    let g = 1;
+    if (t < attack) g = gain;
+    else if (t < attack + release) g = gain + (1 - gain) * (t - attack) / release;
+    x[i] *= g;
+  }
+  return x;
+}
+
+/** 재생 속도를 rate배로 (음높이가 그만큼 올라간다). */
+function speed(x, rate) {
+  const n = Math.floor(x.length / rate);
+  const y = new Float32Array(n);
+  for (let k = 0; k < n; k++) {
+    const f = k * rate, i = Math.floor(f), w = f - i;
+    y[k] = x[i] * (1 - w) + (i + 1 < x.length ? x[i + 1] : 0) * w;
+  }
+  return y;
+}
+
 /**
  * id 녹음의 at초 근처 한 대만 잘라 최고점을 맨 앞에 맞춘다.
- * "짝 달라붙는" 느낌: 울림을 거의 남기지 않고 아주 짧게 끊고(hold 15ms, 감쇠 30ms),
- * 손바닥이 착 붙는 몸통(500Hz 근처)을 조금 올리고, 세게 눌러(포화) 크고 단단하게 만든다.
+ * 찰진 "쨕!": 낮은 "쿵"(600Hz 아래)은 잘라 내고, 2.5kHz 위 고음을 올리고, 음을 조금 높이고(5%),
+ * 때리는 첫 6ms를 키워 또렷하게 한 뒤 울림 없이 아주 짧게 끊는다.
  */
 function snap(name, id, at, opts = {}) {
-  const body = opts.body ?? 3, shelf = opts.shelf ?? 4;
-  let x = decode(clap(id), 'highpass=f=250,equalizer=f=500:t=q:w=1.2:g=' + body + ',highshelf=f=3000:g=' + shelf, Math.max(0, at - 0.05), 0.5);
-  x = alignPeak(x, 0.002);
-  x = x.slice(0, Math.round((opts.len ?? 0.16) * SR));
-  x = envelope(x, opts.hold ?? 0.015, opts.tau ?? 0.03);
-  write(name, finish(x, opts.drive ?? 2.4, -1.6)); // 압축(ogg) 뒤 최고점이 0dB를 넘지 않게 여유
+  let x = decode(clap(id), 'highpass=f=600:p=2,highshelf=f=2500:g=' + (opts.shelf ?? 6), Math.max(0, at - 0.05), 0.5);
+  x = alignPeak(x, 0.0015);
+  x = speed(x, opts.rate ?? 1.05);
+  x = x.slice(0, Math.round((opts.len ?? 0.14) * SR));
+  x = punchUp(x, opts.punch ?? 1.8, 0.006, 0.012);
+  x = envelope(x, opts.hold ?? 0.012, opts.tau ?? 0.028);
+  write(name, finish(x, opts.drive ?? 2.2, -1.6)); // 압축(ogg) 뒤 최고점이 0dB를 넘지 않게 여유
   return x;
 }
 snap('snap', '232928', 2.128);   // 가장 밝은 뺨 소리 (평균 6.2kHz)
 snap('snap2', '539163', 0.184);  // 손바닥으로 탁 (4.8kHz)
 snap('snap3', '232928', 5.098);  // 같은 녹음의 다른 한 대 (5.0kHz)
 
-// ------------------------------------------------------------ 쌌다: 한 번만, 짝보다 크고 묵직하게
-snap('stack_slap', '232928', 2.128, { body: 6, shelf: 2, len: 0.3, hold: 0.03, tau: 0.07, drive: 3.0 });
+// ------------------------------------------------------------ 쌌다: 한 번만, 짝보다 크고 조금 길게 (쿵 없이)
+snap('stack_slap', '232928', 2.128, { shelf: 4, rate: 1.0, len: 0.24, hold: 0.025, tau: 0.05, punch: 2.0, drive: 2.8 });
 
-// ------------------------------------------------------------ 광 도장 (클리어 창에서 광이 하나씩 찍힐 때): 나무 도장 쿵
-{
-  const src = decode(find(IMPACT, 'impactWood_heavy_000.ogg'), 'lowpass=f=4000');
-  const base = alignPeak(src, 0.003);
-  ['stamp', 'stamp2', 'stamp3'].forEach((name, i) => {
-    // 광이 찍힐수록 조금씩 높아진다 (재생 속도를 올려 음높이를 올린다).
-    const rate = 1 + i * 0.08;
-    const n = Math.floor(base.length / rate);
-    let x = new Float32Array(n);
-    for (let k = 0; k < n; k++) x[k] = base[Math.floor(k * rate)];
-    x = x.slice(0, Math.round(0.3 * SR));
-    write(name, finish(envelope(x, 0.04, 0.08), 1.6, -1));
-  });
-}
+// ------------------------------------------------------------ 광 (클리어 창에서 광이 하나씩 찍힐 때): 칩·동전이 차르륵 쌓이는 소리
+// 점수를 따는 느낌. 광이 찍힐수록 조금씩 높아진다.
+[['stamp', 'chips-stack-1.ogg', 1.0], ['stamp2', 'chips-stack-3.ogg', 1.06], ['stamp3', 'chips-stack-2.ogg', 1.12]].forEach(([name, file, rate]) => {
+  let x = decode(find(CASINO, file), 'highpass=f=400,silenceremove=start_periods=1:start_threshold=-45dB');
+  x = speed(x, rate);
+  x = x.slice(0, Math.round(0.4 * SR));
+  write(name, finish(envelope(x, 0.2, 0.1), 1.2, -1.5));
+});
 
 // ------------------------------------------------------------ 패 집기: 카드를 살짝 미는 소리 앞부분
 {

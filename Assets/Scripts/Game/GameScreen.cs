@@ -185,7 +185,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         timerBar.anchorMin = new Vector2(0f, 0.5f);
         timerBar.anchorMax = new Vector2(1f, 0.5f);
         timerBar.offsetMin = new Vector2(120f, -22f);
-        timerBar.offsetMax = new Vector2(-200f, 22f);
+        timerBar.offsetMax = new Vector2(-270f, 22f);
         var barBg = Ui.Image(timerBar, Art.RoundSmall, new Color(0f, 0f, 0f, 0.45f), "Bg");
         Ui.Stretch(barBg.rectTransform, -5f);
         timeFill = Ui.Image(timerBar, Art.RoundSmall, Art.Gold, "Fill");
@@ -198,8 +198,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
             m.rectTransform.sizeDelta = new Vector2(52f, 52f);
             starMarks[i] = m.rectTransform;
         }
-        timeText = Ui.Text(timer, "0:00", 54, Color.white, TextAnchor.MiddleCenter, "Time");
-        Ui.Place(timeText.rectTransform, 1f, 0.5f, new Vector2(180f, 80f), new Vector2(-100f, 0f));
+        timeText = Ui.Text(timer, "0:00", Loc.Korean ? 48 : 36, Color.white, TextAnchor.MiddleCenter, "Time");
+        Ui.Place(timeText.rectTransform, 1f, 0.5f, new Vector2(250f, 80f), new Vector2(-135f, 0f));
         Ui.Outline(timeText, Art.WoodDark, 3f);
 
         // 아래 띠: 뻑 폭탄 칸
@@ -914,7 +914,11 @@ public class GameScreen : MonoBehaviour, IBackHandler
     {
         float remain = Mathf.Max(0f, Limit - elapsed);
         int secs = Mathf.CeilToInt(remain);
-        timeText.text = (secs / 60) + ":" + (secs % 60).ToString("00");
+        // 오른쪽 글자: 지금 광을 지킬 수 있는 남은 시간 ("3광 0:12" → 3광 기준이 지나면 "2광 0:20" → 그다음은 제한 시간까지 "1광 1:05")
+        int tier = revives > 0 ? 1 : def.StarsFor(Mathf.Max(0f, elapsed));
+        float keep = tier == 3 ? def.star3 - elapsed : tier == 2 ? def.star2 - elapsed : remain;
+        int keepSecs = Mathf.Max(0, Mathf.CeilToInt(keep));
+        timeText.text = (tutorial != null ? "" : tier + Loc.T("광 ", " Gwang ")) + (keepSecs / 60) + ":" + (keepSecs % 60).ToString("00");
         timeFill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01(remain / Limit), 1f);
 
         bool warn = remain <= 10f && !finished;

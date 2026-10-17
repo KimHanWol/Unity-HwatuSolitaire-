@@ -43,7 +43,7 @@
 
 ## English (en-US)
 
-**App name**: Hwatu Solitaire
+**App name** (30): Hwatu Solitaire: Tile Match
 
 **Short description** (80):
 Match Korean flower cards from a layered stack. Stack three for a Ppeok bomb!

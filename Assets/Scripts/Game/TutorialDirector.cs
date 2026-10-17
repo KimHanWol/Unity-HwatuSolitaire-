@@ -4,9 +4,9 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 튜토리얼: 정해진 작은 판(2층 16장)에서 손가락으로 짚어 주며 차례로 해 본다.
-///  ① 짝: 처음부터 열려 있는 3월 벚꽃 두 장
-///  ② 덮인 패: 어둡게 보이는 패를 눌러 보면 안 눌린다 → 위층 2월 매조 짝을 치우면 아래 패가 밝아진다
+/// 튜토리얼: 정해진 작은 판(2층 16장: 2층 4장 + 아래층 12장)에서 손가락으로 짚어 주며 차례로 해 본다.
+///  ① 짝: 2층의 3월 벚꽃 두 장 (짝을 지우면 맨 아래 줄이 열린다)
+///  ② 덮인 패: 아직 2층 매조가 덮고 있는 패를 눌러 보면 안 눌린다 → 그 2월 매조 짝을 치우면 아래 패가 밝아진다
 ///  ③ 쌌다(뻑): 1월 두 장으로 짝 → 포개진 동안 셋째 패 → 뻑 폭탄 (튜토리얼에서는 고리 시간이 멈춰 있다)
 ///     같은 걸 8월·12월로 두 번 더 → 뻑 폭탄 셋
 ///  ④ 판에 폭탄 달 패만 남으면 폭탄 마무리 → 싹쓸이 → 황금 광 (설명을 읽고 "다음"을 눌러야 터진다)
@@ -23,12 +23,12 @@ public class TutorialDirector : MonoBehaviour
     }
 
     // ------------------------------------------------------------ 판 (자리 번호)
-    // 위층: X1(1,1) X2(5,1) — 아래층 위쪽 두 줄 여덟 장을 덮는다.
-    // 아래층 (x = 0,2,4,6):
-    //   y=0: A4 B2 B3 C4   ← 덮여 있음
-    //   y=2: C1 C2 C3 B4   ← 덮여 있음
-    //   y=4: A1 A2 A3 B1   ← 처음부터 열려 있음
-    //   y=6:    P1 P2      ← 처음부터 열려 있음 (첫 짝)
+    // 2층: X1(1,1) X2(5,1) — 아래층 위 두 줄 여덟 장을 덮는다.
+    //      P1(1,4) P2(5,4) — 아래층 맨 아래 줄 네 장을 덮는다 (첫 짝).
+    // 아래층 (x = 0,2,4,6), 처음엔 모두 덮여 있다:
+    //   y=0: A4 B2 B3 C4
+    //   y=2: C1 C2 C3 B4
+    //   y=4: A1 A2 A3 B1
     const int X1 = 0, X2 = 1, A4 = 2, B2 = 3, B3 = 4, C4 = 5, C1 = 6, C2 = 7, C3 = 8, B4 = 9, A1 = 10, A2 = 11, A3 = 12, B1 = 13, P1 = 14, P2 = 15;
     const int MonthP = 2, MonthX = 1, MonthA = 0, MonthB = 7, MonthC = 11; // 3월 벚꽃, 2월 매조, 1월 송학, 8월 공산, 12월 비
 
@@ -40,7 +40,7 @@ public class TutorialDirector : MonoBehaviour
             0, 0, 0,  2, 0, 0,  4, 0, 0,  6, 0, 0,
             0, 2, 0,  2, 2, 0,  4, 2, 0,  6, 2, 0,
             0, 4, 0,  2, 4, 0,  4, 4, 0,  6, 4, 0,
-            2, 6, 0,  4, 6, 0,
+            1, 4, 1,  5, 4, 1,
         };
         var cells = new int[16];
         cells[P1] = MonthP * 4 + 0; cells[P2] = MonthP * 4 + 3;
@@ -198,8 +198,8 @@ public class TutorialDirector : MonoBehaviour
                 break;
             // ② 덮인 패
             case 2:
-                Say(Loc.T("패가 층층이 쌓여 있어요. <color=#C8102E>어둡게 보이는 패</color>는\n위에 다른 패가 덮고 있는 패예요. 하나 눌러 볼까요?",
-                          "Cards are stacked in layers. <color=#C8102E>Darker cards</color>\nare covered by another card. Try tapping one."));
+                Say(Loc.T("벚꽃을 치우니 그 아래 패가 밝아졌죠? 패는 층층이 쌓여 있어요.\n아직 <color=#C8102E>어둡게 보이는 패</color>는 위에 다른 패가 덮고 있어요. 눌러 볼까요?",
+                          "Clearing the cherry cards lit up the cards below.\n<color=#C8102E>Darker cards</color> are still covered. Try tapping one."));
                 Point(B2);
                 break;
             case 3:
@@ -212,7 +212,7 @@ public class TutorialDirector : MonoBehaviour
                 Point(X2);
                 break;
             case 5:
-                Say(Loc.T("위 패를 치우니 아래 패가 밝아졌죠?\n이제 이 패들을 고를 수 있어요.", "The cards below lit up.\nNow they can be picked."));
+                Say(Loc.T("매조를 치우니 나머지 패도 모두 열렸어요.\n이제 이 패들을 고를 수 있어요.", "Now every card below is open\nand can be picked."));
                 ShowNext(true);
                 break;
             // ③ 쌌다

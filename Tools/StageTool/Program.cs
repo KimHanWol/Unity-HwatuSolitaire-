@@ -101,10 +101,12 @@ static class Program
             var board = s.CreateBoard();
             bool evenMonths = Enumerable.Range(0, Board.Months).All(m => board.CountMonth(m) % 2 == 0);
             bool solvable = Solver.Solve(board, 7, 400) != null;
-            if (!evenMonths || !solvable)
+            int fourPlus = Enumerable.Range(0, Board.Months).Count(m => board.CountMonth(m) >= 4);
+            bool sweepable = board.CardCount >= StageGenerator.MinCards && fourPlus >= Solver.SweepBombs;
+            if (!evenMonths || !solvable || !sweepable)
             {
                 bad++;
-                Console.WriteLine("stage " + s.number + ": evenMonths=" + evenMonths + " solvable=" + solvable);
+                Console.WriteLine("stage " + s.number + ": evenMonths=" + evenMonths + " solvable=" + solvable + " sweepable=" + sweepable);
             }
         }
         Console.WriteLine(count + " stages, " + bad + " problems");

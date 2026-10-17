@@ -121,6 +121,62 @@ public class StageTests
     }
 
     [Fact]
+    public void EveryStageHasEnoughCardsForSweep()
+    {
+        for (int n = 1; n <= StageGenerator.StageCount; n += 7)
+        {
+            var board = StageGenerator.Build(n).CreateBoard();
+            Assert.True(board.CardCount >= StageGenerator.MinCards, "stage " + n);
+            int fourPlus = 0;
+            for (int m = 0; m < Board.Months; m++) if (board.CountMonth(m) >= 4) fourPlus++;
+            Assert.True(fourPlus >= Solver.SweepBombs, "stage " + n);
+        }
+    }
+
+    [Fact]
+    public void PlantedSweepOrderWorks()
+    {
+        // DealWithSweep 이 심은 순서를 그대로 따라 두면: 짝 → (셋째가 열려 있음) → 마지막엔 싹쓸이 달 패 셋만 남는다.
+        foreach (int n in new[] { 1, 5, 60, 150, 300 })
+        {
+            var plan = StageGenerator.MakePlan(n);
+            var layout = new Layout(plan.Tiles);
+            var slots = new List<int>();
+            for (int i = 0; i < layout.Count; i++) slots.Add(i);
+            int[] dealt = null;
+            var order = new List<int[]>();
+            var sweep = new List<int>();
+            var rng = new Rng(n);
+            for (int t = 0; t < 200 && dealt == null; t++)
+            {
+                order.Clear();
+                sweep.Clear();
+                var cards = StageGenerator.PickCards(plan, layout.Count, rng, sweep);
+                dealt = Rules.DealWithSweep(layout, slots, cards, sweep, rng, order);
+            }
+            Assert.True(dealt != null, "stage " + n);
+            var b = new Board(layout, dealt);
+            int bombs = 0;
+            for (int g = 0; g < order.Count - 1; g++)
+            {
+                var grp = order[g];
+                Assert.True(Rules.CanMatch(b, grp[0], grp[1]), "stage " + n + " group " + g);
+                b[grp[0]] = Board.Empty;
+                b[grp[1]] = Board.Empty;
+                if (grp.Length == 3)
+                {
+                    Assert.True(b.Free(grp[2]), "stage " + n + " third " + g);
+                    b[grp[2]] = Board.Empty;
+                    bombs++;
+                }
+            }
+            Assert.Equal(Solver.SweepBombs, bombs);
+            Assert.Equal(Solver.SweepBombs, b.CardCount);
+            foreach (int i in b.PresentTiles()) Assert.Contains(Board.Month(b[i]), sweep);
+        }
+    }
+
+    [Fact]
     public void StarTimesAreOrdered()
     {
         var stage = StageGenerator.Build(40);

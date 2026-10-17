@@ -14,6 +14,8 @@ namespace HwatuSolitaire.Core
     ///  ③ 판 모양 (Layouts): 피라미드·계단 → 마름모 → 쌍봉 → 십자 → 테두리 → 탑
     ///  ④ 쓰는 달 수 (적으면 짝 찾기가 쉽다)
     ///  ⑤ "쌌다" 시간(짝 뒤 셋째 패를 얹을 수 있는 시간)이 2.0초 → 1.2초로 짧아진다
+    /// 모든 판은 싹쓸이가 가능하다: 4장짜리 달 셋(최소 12장)을 두고, Rules.DealWithSweep 이 "쌌다 셋 → 폭탄 마무리" 수순을
+    /// 배치 안에 심어 둔다.
     /// 배치는 Rules.Deal 로 거꾸로 만들어 늘 끝까지 풀린다. 그 가운데 무작위로 두어도 잘 막히지 않는 배치를 고른다.
     /// </summary>
     public static class StageGenerator
@@ -38,6 +40,9 @@ namespace HwatuSolitaire.Core
 
         public static int ChapterOf(int number) => (number - 1) / StagesPerChapter;
 
+        /// <summary>모든 판에서 싹쓸이가 되도록: 4장(이상)짜리 달이 셋 → 최소 12장.</summary>
+        public const int MinCards = 12;
+
         public static Plan MakePlan(int number)
         {
             if (number < 1 || number > StageCount) throw new ArgumentOutOfRangeException(nameof(number));
@@ -50,6 +55,8 @@ namespace HwatuSolitaire.Core
             float lo = 12 + chapter * 6f, hi = 36 + chapter * 6.5f;
             float target = lo + (hi - lo) * p;
             if (k % 5 == 4 && k != StagesPerChapter - 1) target -= 8;
+            // 싹쓸이(폭탄 셋)가 되려면 4장짜리 달이 셋 = 최소 12장
+            target = Math.Max(target, MinCards);
 
             // ③ 판 모양: 그 챕터까지 열린 모양 가운데 돌아가며 고르되, 그 모양으로는 목표 장수에 한참 못 미치면 다른 열린 모양도 본다.
             int unlocked = Math.Min(Layouts.Names.Length, 2 + chapter);
@@ -74,7 +81,7 @@ namespace HwatuSolitaire.Core
                     for (int l = minL; l <= maxL; l++)
                     {
                         var tiles = Layouts.Build(name, w, h, l);
-                        if (tiles.Count < 8) continue;
+                        if (tiles.Count < MinCards) continue;
                         var (fw, fh) = Layouts.Footprint(tiles);
                         if (fw > MaxColumns || fh > MaxRows) continue;
                         int maxZ = 0;
@@ -104,7 +111,9 @@ namespace HwatuSolitaire.Core
             int pairsTotal = cards / 2;
             int full = Math.Max(1, (int)Math.Ceiling(cards / 4.0));
             int months = chapter == 0 ? full : full + chapter / 2 + (int)(p * 2);
-            plan.MonthCount = Math.Max(2, Math.Min(Math.Min(Board.Months, pairsTotal), months));
+            // 4장짜리 달 셋(12장)을 먼저 채우고 나머지 달은 2장 이상씩이라 쓸 수 있는 달 수에 한도가 있다.
+            int maxMonths = Solver.SweepBombs + Math.Max(0, (cards - 4 * Solver.SweepBombs) / 2);
+            plan.MonthCount = Math.Max(Solver.SweepBombs, Math.Min(Math.Min(Board.Months, maxMonths), months));
 
             // ⑤ 쌌다 시간 2.0초 → 1.2초
             float tt = (number - 1) / (float)(StageCount - 1);
@@ -143,11 +152,13 @@ namespace HwatuSolitaire.Core
             int need = plan.Chapter < 2 ? 6 : plan.Chapter < 6 ? 3 : 2;
             int[] best = null;
             int bestScore = -1;
-            for (int attempt = 0; attempt < 200 && bestScore < need; attempt++)
+            for (int attempt = 0; attempt < 600 && bestScore < need; attempt++)
             {
                 var rng = new Rng(number * 104729 + attempt * 31 + 3);
-                var cards = PickCards(plan, layout.Count, rng);
-                var dealt = Rules.Deal(layout, slots, cards, rng);
+                var sweepMonths = new List<int>();
+                var cards = PickCards(plan, layout.Count, rng, sweepMonths);
+                // 싹쓸이 수순(쌌다 셋 → 폭탄 마무리)을 심어 둔 배치라 모든 판에서 싹쓸이가 된다.
+                var dealt = Rules.DealWithSweep(layout, slots, cards, sweepMonths, rng);
                 if (dealt == null) continue;
                 var board = new Board(layout, dealt);
                 int wins = Solver.CountClears(board, rng.Next(int.MaxValue), Trials);
@@ -157,7 +168,7 @@ namespace HwatuSolitaire.Core
                     best = dealt;
                 }
             }
-            if (best == null) throw new InvalidOperationException("could not deal stage " + number);
+            if (best == null) throw new InvalidOperationException("could not deal a sweepable stage " + number);
             return new StageDef
             {
                 number = number,
@@ -169,7 +180,7 @@ namespace HwatuSolitaire.Core
         }
 
         /// <summary>판에 놓을 패 고르기: 쓸 달을 정하고, 달마다 한 쌍씩 먼저, 남은 쌍은 4장을 채운 뒤 두 벌째(최대 8장)로.</summary>
-        public static List<int> PickCards(Plan plan, int total, Rng rng)
+        public static List<int> PickCards(Plan plan, int total, Rng rng, List<int> sweepMonths = null)
         {
             int pairs = total / 2;
             var monthPool = new List<int>();
@@ -179,11 +190,14 @@ namespace HwatuSolitaire.Core
 
             var count = new int[Board.Months];
             foreach (int m in months) count[m] = 2;
-            int left = pairs - months.Count;
+            // 싹쓸이용: 앞의 세 달은 딱 4장씩 (쌌다 3장 + 폭탄을 쓸 1장). 더 늘리지 않는다.
+            int sweepCount = Math.Min(Solver.SweepBombs, months.Count);
+            for (int i = 0; i < sweepCount; i++) { count[months[i]] = 4; sweepMonths?.Add(months[i]); }
+            int left = pairs - months.Count - sweepCount;
             int cap = 4;
             while (left > 0)
             {
-                var open = months.FindAll(m => count[m] < cap);
+                var open = months.FindAll(m => count[m] < cap && months.IndexOf(m) >= sweepCount);
                 if (open.Count == 0) { cap += 2; continue; }
                 count[open[rng.Next(open.Count)]] += 2;
                 left--;

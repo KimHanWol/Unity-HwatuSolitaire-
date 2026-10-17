@@ -45,11 +45,30 @@ const variants = {
     return s; } },
 };
 fs.mkdirSync(OUT, { recursive: true });
-for (const [k, v] of Object.entries(variants)) {
+function render(html, file, size, transparent) {
   const tmp = path.join(OUT, '_tmp.html');
-  fs.writeFileSync(tmp, `<html><head><style>${base} body{background:${v.bg}}</style></head><body>${v.body()}</body></html>`);
-  execFileSync(CHROME, ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--allow-file-access-from-files', '--force-device-scale-factor=1',
-    '--virtual-time-budget=3000', '--window-size=512,512', '--screenshot=' + path.resolve(OUT, 'icon_' + k + '.png'), url(tmp)], { stdio: 'ignore' });
+  fs.writeFileSync(tmp, html);
+  const args = ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--allow-file-access-from-files', '--force-device-scale-factor=1',
+    '--virtual-time-budget=3000', '--window-size=' + size + ',' + size, '--screenshot=' + path.resolve(OUT, file), url(tmp)];
+  if (transparent) args.splice(1, 0, '--default-background-color=00000000');
+  execFileSync(CHROME, args, { stdio: 'ignore' });
   fs.unlinkSync(tmp);
+}
+// 512 그림(body)을 size 크기 화면에 scale 배로 가운데 놓는다. radius: 모서리 둥글기(%), 50이면 원.
+function page(v, size, { scale = 1, bg = true, art = true, radius = 0 } = {}) {
+  const inner = `<div style="position:absolute;left:${(size - 512 * scale) / 2}px;top:${(size - 512 * scale) / 2}px;width:512px;height:512px;transform:scale(${scale});transform-origin:0 0">${art ? v.body() : ''}</div>`;
+  return `<html><head><style>${base} html, body { width: ${size}px; height: ${size}px; background: transparent; }
+  .shape { position: absolute; inset: 0; overflow: hidden; border-radius: ${radius}%; ${bg ? 'background:' + v.bg : ''} }</style></head>
+  <body><div class="shape">${inner}</div></body></html>`;
+}
+for (const [k, v] of Object.entries(variants)) {
+  // 스토어용: 정사각형 (Play 가 모서리를 둥글게 자르므로 그림은 86%로 줄여 잘리지 않게)
+  render(page(v, 512, { scale: 0.86 }), 'icon_' + k + '.png', 512, false);
+  // 미리 보기·레거시 런처용: 둥근 모서리 정사각형(앱 아이콘 모양)과 원형
+  render(page(v, 512, { radius: 22, scale: 0.86 }), 'icon_' + k + '_rounded.png', 512, true);
+  render(page(v, 512, { radius: 50, scale: 0.78 }), 'icon_' + k + '_round.png', 512, true);
+  // 안드로이드 적응형 아이콘 레이어(432): 배경(그라데이션)과 전경(그림, 가운데 안전 영역 66% 안에 들게 줄임)
+  render(page(v, 432, { art: false }), 'icon_' + k + '_adaptive_bg.png', 432, false);
+  render(page(v, 432, { bg: false, scale: 0.66 }), 'icon_' + k + '_adaptive_fg.png', 432, true);
 }
 console.log('ok');

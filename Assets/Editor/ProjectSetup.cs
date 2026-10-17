@@ -59,12 +59,43 @@ public static class ProjectSetup
 
         var icon = AssetDatabase.LoadAssetAtPath<Texture2D>(IconPath);
         if (icon != null) PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
+        ApplyAndroidIcons(icon);
 
         // 배치 빌드에서는 AdsSetup의 지연 호출이 빌드보다 늦을 수 있어 여기서 확실히 옮긴다 (앱 ID가 비면 앱이 바로 죽는다).
         AdsSetup.Sync();
 
         AssetDatabase.SaveAssets();
         Debug.Log("[ProjectSetup] build settings applied: " + CompanyName + " / " + PackageName);
+    }
+
+    /// <summary>
+    /// 안드로이드 런처 아이콘: 적응형(배경 + 전경, 기기마다 원·둥근 사각형 등으로 잘린다), 원형, 레거시(둥근 사각형).
+    /// 그림은 StoreAssets/src/icons.js 로 만든다 (시안 A).
+    /// </summary>
+    static void ApplyAndroidIcons(Texture2D legacy)
+    {
+        var bg = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Icon/AppIconAdaptiveBg.png");
+        var fg = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Icon/AppIconAdaptiveFg.png");
+        var round = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Icon/AppIconRound.png");
+        var android = NamedBuildTarget.Android;
+        if (bg != null && fg != null)
+        {
+            var icons = PlayerSettings.GetPlatformIcons(android, UnityEditor.Android.AndroidPlatformIconKind.Adaptive);
+            foreach (var ic in icons) ic.SetTextures(bg, fg);
+            PlayerSettings.SetPlatformIcons(android, UnityEditor.Android.AndroidPlatformIconKind.Adaptive, icons);
+        }
+        if (round != null)
+        {
+            var icons = PlayerSettings.GetPlatformIcons(android, UnityEditor.Android.AndroidPlatformIconKind.Round);
+            foreach (var ic in icons) ic.SetTexture(round);
+            PlayerSettings.SetPlatformIcons(android, UnityEditor.Android.AndroidPlatformIconKind.Round, icons);
+        }
+        if (legacy != null)
+        {
+            var icons = PlayerSettings.GetPlatformIcons(android, UnityEditor.Android.AndroidPlatformIconKind.Legacy);
+            foreach (var ic in icons) ic.SetTexture(legacy);
+            PlayerSettings.SetPlatformIcons(android, UnityEditor.Android.AndroidPlatformIconKind.Legacy, icons);
+        }
     }
 
     [MenuItem("Tools/Hwatu Solitaire/Setup Scene")]

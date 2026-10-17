@@ -2,7 +2,7 @@
 
 그래픽: `StoreAssets/icon-512.png`(스토어에 올리는 앱 아이콘, 시안 E: 2층으로 쌓인 벚꽃 짝, 반짝이 없음. 둥근 모양 미리 보기 `icon-512-rounded.png`, 다른 시안은 `icon-options/`, `node StoreAssets/src/icons.js <SVG 폴더> <출력>`), `feature-ko.png`·`feature-en.png`(피처 그래픽 1024x500),
 `screenshots/ko`·`screenshots/en`(휴대전화 스크린샷 1080x1920 6장씩). 다시 만들기: `node StoreAssets/src/make.js <화투 SVG 폴더>`,
-`node StoreAssets/src/screens.js` (먼저 Windows 빌드로 `-autoshot Builds/shots` 를 810x1440 으로 찍는다).
+`node StoreAssets/src/screens.js` (먼저 Windows 빌드로 810x1440, 한국어 `-autoshot <절대경로>/Builds/shots`, 영어 `-autoshot <절대경로>/Builds/shots_en -autoshot-en`).
 
 개인정보처리방침: https://kimhanwol.github.io/Unity-HwatuSolitaire-/privacy/
 

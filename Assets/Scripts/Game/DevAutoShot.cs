@@ -7,11 +7,13 @@ using UnityEngine;
 /// 개발 빌드 확인용: 실행 인자 -autoshot &lt;폴더&gt; 가 있으면 주요 화면을 차례로 열어 스크린샷을 남기고 종료한다.
 /// PC 개발 빌드 전용이라 저장 데이터(PlayerPrefs)는 처음에 지운다.
 ///   Builds/Windows/HwatuSolitaire.exe -screen-width 540 -screen-height 1170 -screen-fullscreen 0 -autoshot shots
+/// -autoshot-en 을 더하면 처음부터 영어로 찍는다 (영어 스토어 스크린샷용).
 /// </summary>
 public class DevAutoShot : MonoBehaviour
 {
     string dir;
     int index;
+    bool english;
 
     public static void StartIfRequested(App app)
     {
@@ -21,16 +23,20 @@ public class DevAutoShot : MonoBehaviour
         PlayerPrefs.DeleteAll();
         Settings.MusicOn = false;
         Settings.SoundOn = false;
-        Loc.Set(true);
+        bool english = System.Array.IndexOf(args, "-autoshot-en") >= 0;
+        Loc.Set(!english);
         Sfx.RefreshMusic();
         var shot = app.gameObject.AddComponent<DevAutoShot>();
         shot.dir = args[i + 1];
+        shot.english = english;
     }
 
     IEnumerator Start()
     {
         Application.runInBackground = true;
         Directory.CreateDirectory(dir);
+        // 언어를 바꾼 뒤 첫 화면을 다시 만든다 (이미 만든 화면은 글자를 바꾸지 않는다)
+        if (english) App.I.ShowTitle();
         yield return Wait(1.5f);
         yield return Shot("title");
 

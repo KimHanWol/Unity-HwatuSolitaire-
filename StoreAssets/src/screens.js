@@ -6,7 +6,8 @@ const ROOT = path.resolve(__dirname, '../..');
 const url = p => 'file:///' + path.resolve(p).split(path.sep).join('/');
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const font = url(path.join(ROOT, 'Assets/Resources/Fonts/Jua-Regular.ttf'));
-const shots = path.join(ROOT, 'Builds/shots');
+// 한국어는 Builds/shots, 영어는 Builds/shots_en (DevAutoShot 에 -autoshot-en 을 더해 찍는다)
+const shotsDir = lang => path.join(ROOT, lang === 'ko' ? 'Builds/shots' : 'Builds/shots_en');
 const list = [
   ['06_snap', '같은 달 두 장을 누르면 <b>짝!</b>', 'Tap two cards of the same month: <b>Snap!</b>'],
   ['08_stacked', '셋째 패까지 얹으면 <b>쌌다!</b> 뻑 폭탄', 'Add a third card for a <b>Ppeok bomb</b>'],
@@ -32,7 +33,7 @@ body { font-family: Jua, sans-serif; background: linear-gradient(#2E8C55, #0F4A2
 .frame img { width: 840px; height: auto; display: block; }
 </style></head><body>
 <div class="cap"><span>${lang === 'ko' ? ko : en}</span></div>
-<div class="frame"><img src="${url(path.join(shots, shot + '.png'))}"></div>
+<div class="frame"><img src="${url(path.join(shotsDir(lang), shot + '.png'))}"></div>
 </body></html>`;
     const tmp = path.join(__dirname, '_tmp.html');
     fs.writeFileSync(tmp, html);

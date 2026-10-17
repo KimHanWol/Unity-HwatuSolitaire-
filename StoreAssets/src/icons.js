@@ -15,6 +15,15 @@ body { position: relative; }
 .spark { position: absolute; width: 60px; height: 60px; margin: -30px 0 0 -30px; }`;
 const c = (n, x, y, w, rot = 0, cls = '', z = 1, shadow = '0 6px 14px rgba(0,0,0,.35)') =>
   `<div class="card ${cls}" style="left:${x - w / 2}px;top:${y - w * AR / 2}px;width:${w}px;height:${w * AR}px;transform:rotate(${rot}deg);z-index:${z};box-shadow:0 7px 0 #7A0A14,${cls.includes('glow') ? '0 0 0 6px #FFE38A, 0 0 34px 10px rgba(255,214,90,.9)' : shadow}"><img src="${card(n)}"></div>`;
+// 부딪침 표시: (x, y)에서 위쪽으로 퍼지는 짧은 충격선 (만화의 "탁!")
+const impact = (x, y, s = 1, z = 9) => {
+  let lines = '';
+  [-62, -31, 0, 31, 62].forEach((a, i) => {
+    const r0 = 26, r1 = i % 2 ? 58 : 74, rad = (a - 90) * Math.PI / 180;
+    lines += `<line x1="${(Math.cos(rad) * r0).toFixed(1)}" y1="${(Math.sin(rad) * r0).toFixed(1)}" x2="${(Math.cos(rad) * r1).toFixed(1)}" y2="${(Math.sin(rad) * r1).toFixed(1)}"/>`;
+  });
+  return `<svg viewBox="-80 -80 160 160" style="position:absolute;left:${x - 80 * s}px;top:${y - 80 * s}px;width:${160 * s}px;height:${160 * s}px;z-index:${z};overflow:visible;filter:drop-shadow(0 0 5px #FFE38A)"><g stroke="#fff" stroke-width="11" stroke-linecap="round">${lines}</g></svg>`;
+};
 // 네 갈래 반짝이 (끝이 뾰족한 별)
 const spark = (x, y, s, z = 9) => `<svg class="spark" viewBox="-30 -30 60 60" style="left:${x}px;top:${y}px;transform:scale(${s});z-index:${z};filter:drop-shadow(0 0 6px #FFE38A)"><path d="M0-30 C3-6 6-3 30 0 C6 3 3 6 0 30 C-3 6-6 3-30 0 C-6-3-3-6 0-30Z" fill="#fff"/></svg>`;
 
@@ -54,6 +63,18 @@ const variants = {
     // 위층: 빛나는 벚꽃 짝
     s += c('March_Kasu_1', 200, 252, 176, -10, 'glow', 3) + c('March_Kasu_2', 312, 252, 176, 10, 'glow', 4);
     s += spark(256, 92, 1.3);
+    return s; } },
+  // E: D에서 반짝이를 빼고 그림을 조금 위로
+  E: { bg: 'radial-gradient(circle at 50% 35%, #8FD3F4 0%, #4A9FE0 60%, #2F6FB8 100%)', body: () => {
+    let s = c('February_Kasu_1', 168, 278, 176, -2, 'dim', 1) + c('May_Kasu_1', 344, 278, 176, 2, 'dim', 1);
+    s += c('March_Kasu_1', 200, 230, 176, -10, 'glow', 3) + c('March_Kasu_2', 312, 230, 176, 10, 'glow', 4);
+    
+    return s; } },
+  // F: 반짝이 대신 두 장이 맞붙은 자리 위로 "탁!" 충격선
+  F: { bg: 'radial-gradient(circle at 50% 35%, #8FD3F4 0%, #4A9FE0 60%, #2F6FB8 100%)', body: () => {
+    let s = c('February_Kasu_1', 168, 294, 176, -2, 'dim', 1) + c('May_Kasu_1', 344, 294, 176, 2, 'dim', 1);
+    s += c('March_Kasu_1', 200, 246, 176, -10, 'glow', 3) + c('March_Kasu_2', 312, 246, 176, 10, 'glow', 4);
+    s += impact(256, 132, 0.8);
     return s; } },
   // C: 3층으로 비스듬히 쌓인 더미(위로 갈수록 밝게), 맨 위 벚꽃 한 쌍. 크림색 배경
   C: { bg: 'radial-gradient(circle at 50% 30%, #FFF8E6 0%, #F6E2B8 60%, #E2BF84 100%)', body: () => {

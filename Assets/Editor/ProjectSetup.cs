@@ -70,7 +70,7 @@ public static class ProjectSetup
 
     /// <summary>
     /// 안드로이드 런처 아이콘: 적응형(배경 + 전경, 기기마다 원·둥근 사각형 등으로 잘린다), 원형, 레거시(둥근 사각형).
-    /// 그림은 StoreAssets/src/icons.js 로 만든다 (시안 D).
+    /// 그림은 StoreAssets/src/icons.js 로 만든다 (시안 E).
     /// </summary>
     static void ApplyAndroidIcons(Texture2D legacy)
     {

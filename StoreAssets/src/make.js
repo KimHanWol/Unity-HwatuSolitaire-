@@ -2,7 +2,7 @@
 // (하늘색 배경, 층층이 쌓인 패 위에서 벚꽃 짝 두 장이 빛난다. 광 패·초록 담요는 쓰지 않는다.)
 // 사용: node StoreAssets/src/make.js <화투 SVG 폴더>   (Tools/Cards/README.md 의 위키미디어 SVG)
 // 결과: StoreAssets/feature-ko.png, StoreAssets/feature-en.png
-// 앱 아이콘은 icons.js (시안 D를 icon-512.png 와 Assets/Icon/AppIcon.png 로 복사해 쓴다)
+// 앱 아이콘은 icons.js (시안 E를 icon-512.png 와 Assets/Icon/AppIcon.png 로 복사해 쓴다)
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
 const SVG = process.argv[2];
 if (!SVG) { console.error('usage: node make.js <svg dir>'); process.exit(1); }

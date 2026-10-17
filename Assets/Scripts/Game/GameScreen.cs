@@ -88,6 +88,9 @@ public class GameScreen : MonoBehaviour, IBackHandler
         Begin(TutorialDirector.Stage());
     }
 
+    /// <summary>튜토리얼 마지막 설명을 읽고 "다음"을 누르면 폭탄 마무리.</summary>
+    public void TutorialFinale() => BombFinale();
+
     /// <summary>튜토리얼이 손가락으로 짚을 자리.</summary>
     public RectTransform TileRect(int tile) => views != null && tile >= 0 && tile < views.Length && views[tile] != null ? views[tile].Rt : null;
     public RectTransform TraySlot(int i) => traySlots[Mathf.Clamp(i, 0, traySlots.Length - 1)];
@@ -383,6 +386,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
             Sfx.Blocked();
             view.Wiggle();
             ShowToast(Loc.T("위에 다른 패가 덮고 있어요", "Covered by another card"));
+            tutorial?.OnBlockedTap(i);
             return;
         }
 
@@ -633,7 +637,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
         }
         if (!finale && OnlyBombsLeft())
         {
-            Anim.Delay(this, delay + 0.2f, BombFinale);
+            // 튜토리얼은 설명을 읽고 "다음"을 누르면 터진다 (TutorialFinale).
+            if (tutorial == null) Anim.Delay(this, delay + 0.2f, BombFinale);
             return;
         }
         Anim.Delay(this, delay, CheckStuck);

@@ -113,3 +113,6 @@ InitTestScene*.unity*
 !/Tools/**/*.csproj
 /Tools/**/bin/
 /Tools/**/obj/
+
+# 릴리스 서명 키 (절대 커밋하지 않는다)
+/Keystore/

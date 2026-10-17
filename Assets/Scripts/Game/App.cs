@@ -123,7 +123,8 @@ public class App : MonoBehaviour
         Ui.Stretch(safe);
         screenLayer = Ui.Rect("Screens", safe);
         Ui.Stretch(screenLayer);
-        // 팝업 층은 안전 영역(노치·하단 여백)까지 덮어야 뒤가 고르게 어두워진다. 광고 배너만 빼고 화면 전체.
+        // 팝업 층은 화면 전체를 덮어야 뒤가 고르게 어두워진다 (노치·하단 여백·배너 자리까지).
+        // 실제 기기의 배너 광고는 게임 화면 위에 따로 그려지므로 그 밑을 어둡게 해도 광고는 그대로 보인다.
         popupLayer = Ui.Rect("Popups", canvasRoot);
         Ui.Stretch(popupLayer);
         var pc = popupLayer.gameObject.AddComponent<Canvas>();
@@ -163,9 +164,6 @@ public class App : MonoBehaviour
         safe.anchorMin = new Vector2(s.xMin / Screen.width, bottom / Screen.height);
         safe.anchorMax = new Vector2(s.xMax / Screen.width, s.yMax / Screen.height);
         safe.offsetMin = safe.offsetMax = Vector2.zero;
-        popupLayer.anchorMin = new Vector2(0f, Ads.BannerHeightPixels / Screen.height);
-        popupLayer.anchorMax = Vector2.one;
-        popupLayer.offsetMin = popupLayer.offsetMax = Vector2.zero;
         LayoutChanged?.Invoke();
     }
 

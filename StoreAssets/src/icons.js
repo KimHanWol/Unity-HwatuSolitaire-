@@ -34,6 +34,27 @@ const variants = {
     s += `<div style="position:absolute;left:256px;top:90px;width:0;height:0;z-index:8">${''}</div>`;
     s += spark(258, 92, 1.3) + spark(420, 140, 0.7) + spark(90, 150, 0.6) + spark(430, 420, 0.5);
     return s; } },
+  // B2: B를 더 단순하게 — 뒤 패 없이 벚꽃 짝 두 장과 큰 반짝이 하나 (작게 보여도 또렷하게)
+  B2: { bg: 'radial-gradient(circle at 50% 45%, #FFD9A8 0%, #FF9F6B 55%, #E8664A 100%)', body: () => {
+    let s = c('March_Kasu_1', 200, 268, 190, -14, 'glow', 3) + c('March_Kasu_2', 318, 276, 190, 12, 'glow', 4);
+    s += spark(262, 96, 1.4);
+    return s; } },
+  // D: 2층 — 짝 두 장 뒤로 아래층 패가 살짝만 보인다 (하늘색)
+  D: { bg: 'radial-gradient(circle at 50% 35%, #8FD3F4 0%, #4A9FE0 60%, #2F6FB8 100%)', body: () => {
+    // 아래층: 짝 두 장 바로 뒤에 같은 크기로 깔려 테두리와 아랫부분만 살짝 보인다
+    let s = c('February_Kasu_1', 168, 300, 176, -2, 'dim', 1) + c('May_Kasu_1', 344, 300, 176, 2, 'dim', 1);
+    // 위층: 빛나는 벚꽃 짝
+    s += c('March_Kasu_1', 200, 252, 176, -10, 'glow', 3) + c('March_Kasu_2', 312, 252, 176, 10, 'glow', 4);
+    s += spark(256, 92, 1.3);
+    return s; } },
+  // D2: D와 같고 산호색 배경
+  D2: { bg: 'radial-gradient(circle at 50% 45%, #FFD9A8 0%, #FF9F6B 55%, #E8664A 100%)', body: () => {
+    // 아래층: 짝 두 장 바로 뒤에 같은 크기로 깔려 테두리와 아랫부분만 살짝 보인다
+    let s = c('February_Kasu_1', 168, 300, 176, -2, 'dim', 1) + c('May_Kasu_1', 344, 300, 176, 2, 'dim', 1);
+    // 위층: 빛나는 벚꽃 짝
+    s += c('March_Kasu_1', 200, 252, 176, -10, 'glow', 3) + c('March_Kasu_2', 312, 252, 176, 10, 'glow', 4);
+    s += spark(256, 92, 1.3);
+    return s; } },
   // C: 3층으로 비스듬히 쌓인 더미(위로 갈수록 밝게), 맨 위 벚꽃 한 쌍. 크림색 배경
   C: { bg: 'radial-gradient(circle at 50% 30%, #FFF8E6 0%, #F6E2B8 60%, #E2BF84 100%)', body: () => {
     let s = '', w = 116;

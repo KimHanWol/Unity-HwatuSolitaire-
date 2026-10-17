@@ -35,8 +35,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
     Vector2 layerShift, boardOrigin;
 
     float elapsed, bonusTime;
-    // 결과 창에서 광고로 받은 추가 시간(초)
-    int bonus;
     bool running, finished;
     int revives;
     // 짝을 맞춘 뒤 셋째 패를 기다리는 뭉치 (없으면 pending == null)
@@ -108,12 +106,10 @@ public class GameScreen : MonoBehaviour, IBackHandler
         else App.I.Play(def.number);
     }
 
-    /// <summary>bonusSeconds: 미리 받은 추가 시간. 시계가 그만큼 거꾸로(-) 시작해서 제한 시간과 광 기준 모두에 여유가 생긴다.</summary>
-    public void Begin(StageDef stage, int bonusSeconds = 0)
+    public void Begin(StageDef stage)
     {
         def = stage;
-        bonus = Mathf.Max(0, bonusSeconds);
-        elapsed = -bonus;
+        elapsed = 0f;
         board = def.CreateBoard();
         rng = new Rng(def.number * 31 + System.Environment.TickCount);
         BuildHud();
@@ -125,8 +121,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
         RefreshTimer();
         if (tutorial != null) Anim.Delay(this, 1.0f, tutorial.StartLesson);
         else ShowTipIfNeeded();
-        if (bonus > 0)
-            Anim.Delay(this, 0.8f, () => Fx.PopText(timeText.rectTransform.position, "+" + bonus + Loc.T("초", "s"), 80, Color.white, Art.BlueDark, 120f, 1.4f));
     }
 
     /// <summary>튜토리얼: 시간 막대·광 표시를 숨기고, 그 자리와 판 위쪽에 안내 띠를 둔다.</summary>
@@ -1015,7 +1009,6 @@ public class GameScreen : MonoBehaviour, IBackHandler
             tutorial.Finish();
             return;
         }
-        // 추가 시간을 받았으면 그만큼 빼고 잰다 (시계가 -bonus 에서 시작했으므로 elapsed 그대로).
         int seconds = Mathf.Max(1, Mathf.CeilToInt(elapsed));
         int stars = revives > 0 ? 1 : def.StarsFor(elapsed);
         int prevBest = Progress.BestSeconds(def.number);
@@ -1029,19 +1022,16 @@ public class GameScreen : MonoBehaviour, IBackHandler
         Anim.Delay(this, 1.1f, () => ShowResult(seconds, stars, prevBest, newBest));
     }
 
-    /// <summary>"추가 시간 받고 다시 하기" 광고로 받는 시간(초): 3광 기준의 20%, 5초 단위, 최소 10초.</summary>
-    int BonusSeconds => Mathf.Max(10, Mathf.RoundToInt(def.star3 * 0.2f / 5f) * 5);
 
     /// <summary>
     /// 결과 창: 광 셋(도장처럼 하나씩) → 싹쓸이면 황금 광 띠 → 걸린 시간·최고 기록
-    /// → 광을 다 못 땄으면 "추가 시간 받고 다시 하기"(보상형 광고: N초를 미리 받고 그 판을 다시 시작) → 다음·다시·목록.
+    /// → 다음·다시·목록.
     /// </summary>
     void ShowResult(int seconds, int stars, int prevBest, bool newBest)
     {
         bool last = def.number >= App.I.Stages.stages.Length;
-        bool canCharge = stars < 3 && revives == 0;
         float y = 0f;
-        float height = 420f + (sweep ? 190f : 0f) + 160f + (canCharge ? 150f : 0f) + (last ? 0f : 190f) + 170f;
+        float height = 420f + (sweep ? 190f : 0f) + 160f + (last ? 0f : 190f) + 170f;
         var p = Popup.Open(new Vector2(900f, height), Loc.T("스테이지 ", "Stage ") + def.number + Loc.T(" 클리어", " Clear"));
         p.CanClose = false;
         p.OnBackPressed = () => App.I.ShowStages(def.number);
@@ -1097,31 +1087,10 @@ public class GameScreen : MonoBehaviour, IBackHandler
             y += 190f;
         }
 
-        string bonusNote = bonus > 0 ? Loc.T("  (+" + bonus + "초)", "  (+" + bonus + "s)") : "";
-        p.Label(Loc.T("걸린 시간  ", "Time  ") + Clock(seconds) + bonusNote, 60, Art.Ink, y + 30f);
+        p.Label(Loc.T("걸린 시간  ", "Time  ") + Clock(seconds), 60, Art.Ink, y + 30f);
         string bestLine = newBest && prevBest > 0 ? Loc.T("새 기록!", "New record!") : Loc.T("최고 기록  ", "Best  ") + Clock(Progress.BestSeconds(def.number));
         p.Label(bestLine, 44, newBest && prevBest > 0 ? Art.Red : Art.GreyDark, y + 100f);
         y += 160f;
-
-        // 추가 시간 받고 다시 하기: 광고를 보면 N초를 미리 받고 이 판을 처음부터 다시 한다 → 광을 더 따기 쉽다.
-        if (canCharge)
-        {
-            int extra = BonusSeconds;
-            var charge = p.Button(Loc.T("+" + extra + "초 받고 다시 하기", "Retry with +" + extra + "s"), null, Art.Blue, Art.BlueDark, y + 60f, () =>
-            {
-                if (!Ads.RewardedReady(Ads.Reward.TimeCharge))
-                {
-                    ShowToast(Loc.T("광고를 불러오는 중이에요. 잠시 뒤 다시 눌러 주세요", "Loading an ad... please try again soon"));
-                    return;
-                }
-                Ads.ShowRewarded(Ads.Reward.TimeCharge, ok =>
-                {
-                    if (ok && this != null) App.I.Play(def.number, extra);
-                });
-            }, 0f, 0f, 120f);
-            Ui.AdTag(charge, Art.BlueDark);
-            y += 150f;
-        }
 
         if (!last)
         {

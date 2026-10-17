@@ -1,21 +1,19 @@
 {
-  "useTestAds": true,
+  "useTestAds": false,
   "testDeviceIds": [],
   "interstitialFromStage": 3,
   "interstitialMinInterval": 60,
   "quietAfterRewarded": 45,
   "android": {
-    "appId": "",
-    "banner": "",
-    "interstitial": "",
-    "rewardedTime": "",
-    "rewardedRevive": ""
+    "appId": "ca-app-pub-7890402400874906~6252894566",
+    "banner": "ca-app-pub-7890402400874906/4939812891",
+    "interstitial": "ca-app-pub-7890402400874906/2550909541",
+    "rewardedRevive": "ca-app-pub-7890402400874906/7591308222"
   },
   "ios": {
     "appId": "",
     "banner": "",
     "interstitial": "",
-    "rewardedTime": "",
     "rewardedRevive": ""
   }
 }

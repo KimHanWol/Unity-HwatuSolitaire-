@@ -11,7 +11,7 @@ using GoogleMobileAds.Ump.Api;
 #endif
 
 /// <summary>
-/// AdMob 하단 배너 / 전면(다음 스테이지로 넘어갈 때) / 보상형(시간 충전, 부활).
+/// AdMob 하단 배너 / 전면(다음 스테이지로 넘어갈 때, 가끔 다시 하기) / 보상형(시간 초과 뒤 이어하기).
 /// 광고 ID와 빈도는 Assets/Resources/AdConfig.json 한 곳에 적는다 (docs/ADS.md).
 /// Google Mobile Ads 플러그인(Packages/manifest.json)이 있고 Assets/csc.rsp에 -define:ADMOB이 있어야 실제 광고가 나온다.
 /// 에디터에서는 플러그인이 보여주는 가짜 광고 화면이 뜬다. ADMOB이 없으면 에디터에서는 "광고를 다 본 것"으로 바로 처리해
@@ -59,15 +59,13 @@ public class Ads : MonoBehaviour
         public string banner = "";
         // 다음 스테이지로 넘어갈 때
         public string interstitial = "";
-        // 보상형은 쓰임새별로 광고 단위를 나눠야 AdMob에서 어느 쪽이 얼마나 보였는지 따로 볼 수 있다.
-        public string rewardedTime = "";
+        // 보상형: 시간 초과 뒤 이어하기
         public string rewardedRevive = "";
     }
 
     /// <summary>보상형 광고가 쓰이는 자리.</summary>
     public enum Reward
     {
-        TimeCharge, // 결과 창의 시간 충전 (걸린 시간 줄이기)
         Revive  // 시간 초과 뒤 이어하기
     }
 
@@ -187,12 +185,10 @@ public class Ads : MonoBehaviour
 
 #if ADS_ON
     // Reward 값 순서대로 하나씩 미리 불러 둔다.
-    readonly RewardedAd[] rewarded = new RewardedAd[2];
+    readonly RewardedAd[] rewarded = new RewardedAd[1];
     InterstitialAd interstitial;
 
-    static string RewardedId(Reward kind) => kind == Reward.TimeCharge
-        ? PickId(u => u.rewardedTime, TestRewardedId, "보상형(시간 충전)")
-        : PickId(u => u.rewardedRevive, TestRewardedId, "보상형(부활)");
+    static string RewardedId(Reward kind) => PickId(u => u.rewardedRevive, TestRewardedId, "보상형(이어하기)");
     static string InterstitialId => PickId(u => u.interstitial, TestInterstitialId, "전면");
 
     void Start()
@@ -228,7 +224,6 @@ public class Ads : MonoBehaviour
         sdkStarted = true;
         MobileAds.Initialize(status => OnMain(() =>
         {
-            LoadRewarded(Reward.TimeCharge);
             LoadRewarded(Reward.Revive);
             LoadInterstitial();
             LoadBanner();

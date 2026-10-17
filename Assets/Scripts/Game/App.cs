@@ -190,12 +190,12 @@ public class App : MonoBehaviour
     /// <summary>튜토리얼 판으로 시작.</summary>
     public void PlayTutorial() => Swap<GameScreen>().BeginTutorial();
 
-    /// <summary>스테이지 시작. bonusSeconds를 주면 그만큼 시간을 미리 받고 시작한다 (결과 창의 "추가 시간 받고 다시 하기").</summary>
-    public void Play(int stage, int bonusSeconds = 0)
+    /// <summary>스테이지 시작.</summary>
+    public void Play(int stage)
     {
         stage = Mathf.Clamp(stage, 1, Stages.stages.Length);
         Progress.LastPlayed = stage;
-        Swap<GameScreen>().Begin(Stage(stage), bonusSeconds);
+        Swap<GameScreen>().Begin(Stage(stage));
     }
 
     // ------------------------------------------------------------ 팝업

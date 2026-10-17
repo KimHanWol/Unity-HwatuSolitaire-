@@ -5,8 +5,7 @@
 |---|---|---|
 | 하단 배너 | 모든 화면 맨 아래. 화면은 배너 높이만큼 위로 비켜 그린다 | `Ads.LoadBanner`, `App.ApplySafeArea` |
 | 전면 | 스테이지를 깨고 **다음 스테이지**, 또는 결과·시간 초과 창의 **다시 하기**를 눌렀을 때 (빈도 조건은 같음) | `GameScreen.ShowResult`, `RetryWithAd` → `Ads.TryShowInterstitial` |
-| 보상형(추가 시간) | 클리어 창에서 광을 다 못 땄을 때 "+N초 받고 다시 하기" → N초(3광 기준의 20%, 최소 10초)를 미리 받고 그 판을 다시 시작 | `GameScreen.ShowResult`, `App.Play(stage, bonus)` |
-| 보상형(부활) | 시간 초과 창의 "+N초 이어하기" (한 판에 2번까지, N = 제한 시간의 30%, 최소 30초) | `GameScreen.TimeUp` |
+| 보상형(이어하기) | 시간 초과 창의 "광고 보고 이어하기" (한 판에 2번까지, N = 제한 시간의 30%, 최소 30초) | `GameScreen.TimeUp` |
 
 전면 광고 빈도(`AdConfig.json`):
 - `interstitialFromStage`: 이 스테이지를 깬 뒤부터 (기본 3 → 1·2탄은 광고 없음)
@@ -22,7 +21,6 @@
     "appId": "ca-app-pub-XXXXXXXX~YYYYYYYY",
     "banner": "ca-app-pub-XXXXXXXX/1111111111",
     "interstitial": "ca-app-pub-XXXXXXXX/2222222222",
-    "rewardedTime": "ca-app-pub-XXXXXXXX/3333333333",
     "rewardedRevive": "ca-app-pub-XXXXXXXX/4444444444"
   }
 }
@@ -33,7 +31,7 @@
 - 내 폰에서 실제 ID로 시험할 때는 `testDeviceIds`에 기기 ID(로그캣에 찍힘)를 넣는다.
 
 ## AdMob에서 만들 광고 단위
-앱 1개 + 광고 단위 4개: 배너(적응형) 1, 전면 1, 보상형 2(추가 시간, 부활 — 따로 만들어야 어느 쪽이 얼마나 보였는지 나뉜다).
+앱 1개 + 광고 단위 3개: 배너(적응형) 1, 전면 1, 보상형 1(시간 초과 뒤 이어하기).
 
 ## 동작 메모
 - 플러그인: `Packages/manifest.json`의 `com.google.ads.mobile`(OpenUPM). `Assets/csc.rsp`의 `-define:ADMOB`이 있어야 실제 광고 코드가 컴파일된다.

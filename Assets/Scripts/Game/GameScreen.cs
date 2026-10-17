@@ -530,7 +530,9 @@ public class GameScreen : MonoBehaviour, IBackHandler
     void UpdatePending(float dt)
     {
         if (pending == null) return;
-        if (tutorial == null) pending.left -= dt;
+        pending.left -= dt;
+        // 튜토리얼에서도 고리는 평소처럼 줄지만, 다 줄면 다시 채워서 셋째 패를 놓치지 않게 한다.
+        if (tutorial != null && pending.left <= 0f) pending.left = def.stackWindow;
         if (pending.ring != null)
         {
             float k = Mathf.Clamp01(pending.left / def.stackWindow);

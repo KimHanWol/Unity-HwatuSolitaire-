@@ -4,11 +4,11 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 튜토리얼: 정해진 작은 판(2층 14장)에서 손가락으로 짚어 주며 차례로 해 본다.
-///  ⓪ 덮인 패: 어둡게 보이는 (위가 덮인) 패를 직접 눌러 보면 안 눌린다
-///  ① 짝: 같은 달 두 장 (위층 2월 매조) → 위 패를 치우면 아래 패가 밝아진다
-///  ② 쌌다(뻑): 1월 두 장으로 짝 → 포개진 동안 셋째 패 → 뻑 폭탄 (튜토리얼에서는 고리 시간이 멈춰 있다)
-///  ③ 같은 걸 8월·12월로 두 번 더 → 뻑 폭탄 셋
+/// 튜토리얼: 정해진 작은 판(2층 16장)에서 손가락으로 짚어 주며 차례로 해 본다.
+///  ① 짝: 처음부터 열려 있는 3월 벚꽃 두 장
+///  ② 덮인 패: 어둡게 보이는 패를 눌러 보면 안 눌린다 → 위층 2월 매조 짝을 치우면 아래 패가 밝아진다
+///  ③ 쌌다(뻑): 1월 두 장으로 짝 → 포개진 동안 셋째 패 → 뻑 폭탄 (튜토리얼에서는 고리 시간이 멈춰 있다)
+///     같은 걸 8월·12월로 두 번 더 → 뻑 폭탄 셋
 ///  ④ 판에 폭탄 달 패만 남으면 폭탄 마무리 → 싹쓸이 → 황금 광 (설명을 읽고 "다음"을 눌러야 터진다)
 /// 짚은 패 말고는 누를 수 없다. 끝나면 TutorialDirector.Done 이 켜지고 1탄으로 간다.
 /// </summary>
@@ -24,12 +24,13 @@ public class TutorialDirector : MonoBehaviour
 
     // ------------------------------------------------------------ 판 (자리 번호)
     // 위층: X1(1,1) X2(5,1) — 아래층 위쪽 두 줄 여덟 장을 덮는다.
-    // 아래층 세 줄 (x = 0,2,4,6):
-    //   y=0: A4 B2 B3 C4
-    //   y=2: C1 C2 C3 B4
-    //   y=4: A1 A2 A3 B1   ← 처음부터 열려 있는 줄
-    const int X1 = 0, X2 = 1, A4 = 2, B2 = 3, B3 = 4, C4 = 5, C1 = 6, C2 = 7, C3 = 8, B4 = 9, A1 = 10, A2 = 11, A3 = 12, B1 = 13;
-    const int MonthX = 1, MonthA = 0, MonthB = 7, MonthC = 11; // 2월 매조, 1월 송학, 8월 공산, 12월 비
+    // 아래층 (x = 0,2,4,6):
+    //   y=0: A4 B2 B3 C4   ← 덮여 있음
+    //   y=2: C1 C2 C3 B4   ← 덮여 있음
+    //   y=4: A1 A2 A3 B1   ← 처음부터 열려 있음
+    //   y=6:    P1 P2      ← 처음부터 열려 있음 (첫 짝)
+    const int X1 = 0, X2 = 1, A4 = 2, B2 = 3, B3 = 4, C4 = 5, C1 = 6, C2 = 7, C3 = 8, B4 = 9, A1 = 10, A2 = 11, A3 = 12, B1 = 13, P1 = 14, P2 = 15;
+    const int MonthP = 2, MonthX = 1, MonthA = 0, MonthB = 7, MonthC = 11; // 3월 벚꽃, 2월 매조, 1월 송학, 8월 공산, 12월 비
 
     public static StageDef Stage()
     {
@@ -39,8 +40,10 @@ public class TutorialDirector : MonoBehaviour
             0, 0, 0,  2, 0, 0,  4, 0, 0,  6, 0, 0,
             0, 2, 0,  2, 2, 0,  4, 2, 0,  6, 2, 0,
             0, 4, 0,  2, 4, 0,  4, 4, 0,  6, 4, 0,
+            2, 6, 0,  4, 6, 0,
         };
-        var cells = new int[14];
+        var cells = new int[16];
+        cells[P1] = MonthP * 4 + 0; cells[P2] = MonthP * 4 + 3;
         cells[X1] = MonthX * 4 + 0; cells[X2] = MonthX * 4 + 2;
         cells[A1] = MonthA * 4 + 0; cells[A2] = MonthA * 4 + 2; cells[A3] = MonthA * 4 + 3; cells[A4] = MonthA * 4 + 1;
         cells[B1] = MonthB * 4 + 0; cells[B2] = MonthB * 4 + 1; cells[B3] = MonthB * 4 + 2; cells[B4] = MonthB * 4 + 3;
@@ -114,31 +117,33 @@ public class TutorialDirector : MonoBehaviour
 
     public void OnSelected(int tile)
     {
-        if (step == 1 && tile == X1) Go(2);
-        else if (step == 4 && tile == A1) Go(5);
-        else if (step == 8 && tile == B1) Go(9);
-        else if (step == 11 && tile == C1) Go(12);
+        if (step == 0 && tile == P1) Go(1);
+        else if (step == 3 && tile == X1) Go(4);
+        else if (step == 6 && tile == A1) Go(7);
+        else if (step == 10 && tile == B1) Go(11);
+        else if (step == 13 && tile == C1) Go(14);
     }
 
-    /// <summary>덮인 패를 눌렀을 때 (첫 단계: 직접 눌러 보고 안 눌리는 걸 확인).</summary>
+    /// <summary>덮인 패를 눌렀을 때 (직접 눌러 보고 안 눌리는 걸 확인하는 단계).</summary>
     public void OnBlockedTap(int tile)
     {
-        if (step == 0 && tile == B2) Later(1.1f, 1);
+        if (step == 2 && tile == B2) Later(1.1f, 3);
     }
 
     public void OnMatched(int month)
     {
-        if (step == 2 && month == MonthX) Later(0.6f, 3);
-        else if (step == 5 && month == MonthA) Go(6);
-        else if (step == 9 && month == MonthB) Go(10);
-        else if (step == 12 && month == MonthC) Go(13);
+        if (step == 1 && month == MonthP) Later(0.7f, 2);
+        else if (step == 4 && month == MonthX) Later(0.6f, 5);
+        else if (step == 7 && month == MonthA) Go(8);
+        else if (step == 11 && month == MonthB) Go(12);
+        else if (step == 14 && month == MonthC) Go(15);
     }
 
     public void OnStacked(int month)
     {
-        if (step == 6 && month == MonthA) Later(1.4f, 7);
-        else if (step == 10 && month == MonthB) Later(1.4f, 11);
-        else if (step == 13 && month == MonthC) Later(1.4f, 14);
+        if (step == 8 && month == MonthA) Later(1.4f, 9);
+        else if (step == 12 && month == MonthB) Later(1.4f, 13);
+        else if (step == 15 && month == MonthC) Later(1.4f, 16);
     }
 
     void Later(float seconds, int nextStep)
@@ -149,13 +154,13 @@ public class TutorialDirector : MonoBehaviour
 
     void Next()
     {
-        if (step == 3) Go(4);
-        else if (step == 7) Go(8);
-        else if (step == 14)
+        if (step == 5) Go(6);
+        else if (step == 9) Go(10);
+        else if (step == 16)
         {
             // 설명을 다 읽고 나서 폭탄 마무리
             Hide();
-            step = 15;
+            step = 17;
             game.TutorialFinale();
         }
     }
@@ -181,68 +186,81 @@ public class TutorialDirector : MonoBehaviour
         Hide();
         switch (s)
         {
+            // ① 짝
             case 0:
-                Say(Loc.T("화투 사천성에 온 걸 환영해요!\n<color=#C8102E>어둡게 보이는 패</color>는 위에 다른 패가 덮고 있는 패예요. 하나 눌러 볼까요?",
-                          "Welcome! <color=#C8102E>Darker cards</color> are covered\nby another card. Try tapping one."));
-                Point(B2);
+                Say(Loc.T("화투 사천성에 온 걸 환영해요!\n같은 달(같은 꽃) 패 두 장을 차례로 누르면 <color=#C8102E>짝!</color> 하고 없어져요.",
+                          "Welcome! Tap two cards of the same month\n(same flower) to <color=#C8102E>snap</color> them away."));
+                Point(P1);
                 break;
             case 1:
-                Say(Loc.T("덮인 패는 <color=#C8102E>눌리지 않아요</color>. 위 패부터 치워야 해요.\n같은 달(같은 꽃) 패 두 장을 차례로 누르면 짝! 하고 없어져요.",
-                          "Covered cards <color=#C8102E>can't be picked</color>. Clear the top first.\nTap two cards of the same month to snap them away."));
-                Point(X1);
+                Say(Loc.T("좋아요! 같은 3월 벚꽃 패를 하나 더 눌러요.", "Good! Now tap the other March card."));
+                Point(P2);
                 break;
+            // ② 덮인 패
             case 2:
-                Say(Loc.T("좋아요! 같은 2월 매조 패를 하나 더 눌러요.", "Good! Now tap the other February card."));
-                Point(X2);
+                Say(Loc.T("패가 층층이 쌓여 있어요. <color=#C8102E>어둡게 보이는 패</color>는\n위에 다른 패가 덮고 있는 패예요. 하나 눌러 볼까요?",
+                          "Cards are stacked in layers. <color=#C8102E>Darker cards</color>\nare covered by another card. Try tapping one."));
+                Point(B2);
                 break;
             case 3:
+                Say(Loc.T("덮인 패는 <color=#C8102E>눌리지 않아요</color>. 위 패부터 치워야 해요.\n위에 있는 2월 매조 두 장을 짝지어 볼까요?",
+                          "Covered cards <color=#C8102E>can't be picked</color>. Clear the top first.\nSnap the two February cards on top."));
+                Point(X1);
+                break;
+            case 4:
+                Say(Loc.T("같은 2월 매조 패를 하나 더!", "The other February card!"));
+                Point(X2);
+                break;
+            case 5:
                 Say(Loc.T("위 패를 치우니 아래 패가 밝아졌죠?\n이제 이 패들을 고를 수 있어요.", "The cards below lit up.\nNow they can be picked."));
                 ShowNext(true);
                 break;
-            case 4:
+            // ③ 쌌다
+            case 6:
                 Say(Loc.T("이번엔 <color=#C8102E>쌌다!</color>를 해 볼게요.\n1월 송학 두 장으로 먼저 짝!", "Now let's make a <color=#C8102E>Ppeok</color>!\nFirst, snap two January cards."));
                 Point(A1);
                 break;
-            case 5:
+            case 7:
                 Say(Loc.T("같은 1월 패를 하나 더!", "One more January card!"));
                 Point(A2);
                 break;
-            case 6:
+            case 8:
                 Say(Loc.T("짝 맞춘 두 장이 잠깐 포개져 있어요.\n금빛 고리가 줄기 전에 <color=#C8102E>같은 달 패를 하나 더</color> 누르면…",
                           "The pair stays stacked for a moment.\nTap <color=#C8102E>one more of that month</color> before the ring runs out..."));
                 Point(A3);
                 break;
-            case 7:
+            case 9:
                 Say(Loc.T("<color=#C8102E>쌌다!</color> 세 장이 뭉쳐 <color=#C8102E>뻑 폭탄</color>이 됐어요.\n폭탄 달 패를 누르면 둘레 패까지 펑!\n하지만 지금은 아껴 둬요.",
                           "<color=#C8102E>Stacked!</color> That's a <color=#C8102E>Ppeok bomb</color>.\nTapping that month blasts nearby pairs -\nbut save it for now."));
                 PointAt(game.TraySlot(0));
                 ShowNext(true);
                 break;
-            case 8:
+            case 10:
                 Say(Loc.T("8월 공산으로 한 번 더! 짝 → 셋째 패.", "Again with August: pair, then the third card."));
                 Point(B1);
                 break;
-            case 9:
+            case 11:
                 Say(Loc.T("짝!", "Snap!"));
                 Point(B2);
                 break;
-            case 10:
+            case 12:
                 Say(Loc.T("고리가 줄기 전에 셋째 패!", "The third card, before the ring runs out!"));
                 Point(B3);
                 break;
-            case 11:
+            case 13:
                 Say(Loc.T("마지막! 12월 비로 한 번 더.", "Last one! December this time."));
                 Point(C1);
                 break;
-            case 12:
+            case 14:
                 Say(Loc.T("짝!", "Snap!"));
                 Point(C2);
                 break;
-            case 13:
+            case 15:
                 Say(Loc.T("셋째 패!", "The third card!"));
                 Point(C3);
                 break;
-            case 14:
+            // ④ 싹쓸이
+            case 16:
                 Say(Loc.T("뻑 폭탄이 셋! 판에 폭탄 달 패만 남으면\n저절로 펑! 펑! 펑! 터져요.\n뻑 폭탄 셋으로 판을 비우면 <color=#C8102E>싹쓸이</color>!",
                           "Three bombs! When only bomb cards are left,\nthey blow up on their own.\nClear the board with three bombs: <color=#C8102E>Sweep</color>!"));
                 ShowNext(true);

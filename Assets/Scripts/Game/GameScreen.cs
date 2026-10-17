@@ -1143,14 +1143,33 @@ public class GameScreen : MonoBehaviour, IBackHandler
         if (!finished) OpenPause();
     }
 
+    /// <summary>앱을 내렸다 돌아오면 바로 시간이 흐르지 않게 일시정지 창을 띄워 둔다 (광고가 떠서 내려간 건 빼고).</summary>
+    void OnApplicationPause(bool paused)
+    {
+        if (paused && !Ads.Showing) OpenPause();
+    }
+
+    /// <summary>판을 하던 중에 다시 하거나 나가면 지금까지 한 것이 없어진다는 걸 한 번 묻는다.</summary>
+    void ConfirmLeave(string title, string yes, System.Action leave)
+    {
+        var p = Popup.Open(new Vector2(820f, 640f), title);
+        p.Label(Loc.T("지금 하던 판은 <color=#C8102E>저장되지 않아요</color>.\n그래도 할까요?",
+                      "Progress in this stage\n<color=#C8102E>won't be saved</color>. Continue?"), 40, Art.Ink, 230f, 160f);
+        float half = 330f;
+        p.Button(yes, null, Art.Red, Art.RedDark, 430f, leave, half, -(half + 30f) / 2f, 130f);
+        p.Button(Loc.T("계속하기", "Keep playing"), null, Art.Green, Art.GreenDark, 430f, () => p.Close(), half, (half + 30f) / 2f, 130f);
+    }
+
     void OpenPause()
     {
         if (finished || App.I.PopupOpen || !running) return;
         if (selected != null) { selected.Selected = false; selected = null; }
         var p = Popup.Open(new Vector2(880f, 1280f), Loc.T("일시정지", "Paused"), true);
         p.Button(Loc.T("계속하기", "Resume"), Art.IconPlay, Art.Green, Art.GreenDark, 190f, () => p.Close(), 0f, 0f, 140f);
-        p.Button(Loc.T("다시 하기", "Restart"), Art.IconRetry, Art.Red, Art.RedDark, 350f, RestartStage, 0f, 0f, 140f);
-        p.Button(Loc.T("스테이지 목록", "Stage List"), Art.IconGrid, Art.Wood, Art.WoodDark, 510f, () => App.I.ShowStages(def.number), 0f, 0f, 140f);
+        p.Button(Loc.T("다시 하기", "Restart"), Art.IconRetry, Art.Red, Art.RedDark, 350f,
+            () => ConfirmLeave(Loc.T("다시 하기", "Restart"), Loc.T("다시 하기", "Restart"), RestartStage), 0f, 0f, 140f);
+        p.Button(Loc.T("스테이지 목록", "Stage List"), Art.IconGrid, Art.Wood, Art.WoodDark, 510f,
+            () => ConfirmLeave(Loc.T("나가기", "Leave"), Loc.T("나가기", "Leave"), () => App.I.ShowStages(def.number)), 0f, 0f, 140f);
         p.Toggle(Loc.T("효과음", "Sound"), 660f, () => Settings.SoundOn, v => Settings.SoundOn = v);
         p.Toggle(Loc.T("배경음", "Music"), 780f, () => Settings.MusicOn, v => { Settings.MusicOn = v; Sfx.RefreshMusic(); });
         p.Toggle(Loc.T("진동", "Vibration"), 900f, () => Settings.VibrationOn, v => Settings.VibrationOn = v);

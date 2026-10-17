@@ -11,7 +11,7 @@
 | fail | 시간 초과 | Kenney jingles_PIZZI07 (반음씩 내려가는 가락) |
 | revive | 이어하기 | Kenney confirmation_002 |
 
-나머지는 코드 합성(Sfx.cs): 폭탄 "뻥"(BuildBomb, 만화처럼 음이 떨어지는 퐁 + 짧은 바람), 클리어(BuildClear), 버튼 "뽁"(BuildClick), 시간 경고 "띡"(BuildTick), 도화선(BuildFuse), 광(BuildSparkle), 황금 광(BuildGolden), 덮인 패 "톡"(BuildBlocked), 배경음.
+나머지는 코드 합성(Sfx.cs): 폭탄 "쾅"(BuildBomb: 떨어지는 쾅 + 터지는 잡음 + 파편 알갱이 + 짧은 잔향, 폰 스피커에서 들리게 쾅을 살짝 포화), 클리어(BuildClear), 버튼 "뽁"(BuildClick, 250→750Hz), 시간 경고 "띡"(BuildTick), 도화선(BuildFuse), 광(BuildSparkle), 황금 광(BuildGolden), 덮인 패 "톡"(BuildBlocked), 배경음.
 폭탄·클리어·버튼·째깍은 Kenney 녹음도 써 봤지만 다른 소리와 결이 달라 합성으로 되돌렸다.
 
 ## 재료 (모두 CC0)
@@ -25,3 +25,9 @@
 
 고스톱 앱의 "짝!"은 박수·뺨 치는 소리처럼 높고 날카롭다. 여러 번 친 녹음이 많아서 `snap(이름, 번호, 시각초)`로 어느 한 대를 쓸지 고른다.
 다른 소리를 겹치지 않는다 (섞인 소리로 들린다). 더 높게/낮게 하려면 `snap()` 안 `highshelf` 의 g(dB)를 바꾼다.
+
+## 소리 크기 맞춤
+`Sfx.cs` 맨 위 `Play(…, 볼륨)` 값으로 맞춘다. 기준은 짝(snap, 볼륨 1)이고, 100ms 창 RMS × 볼륨으로 쟀을 때:
+쌌다·폭탄은 짝과 비슷하거나 조금 크게(+0~3dB), 광·클리어·황금 광은 짝보다 조금 크게(+2~4dB), 실패·이어하기는 짝과 비슷하게,
+패 고르기·버튼·째깍·덮인 패는 짝보다 10dB 안팎 작게, 배경음은 13dB 안팎 작게.
+(합성 소리를 wav로 뽑아 재는 방법: Sfx.cs 를 UnityEngine 흉내 클래스와 함께 콘솔 프로그램으로 빌드해 Awake 뒤 클립 필드를 저장.)

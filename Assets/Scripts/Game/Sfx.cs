@@ -28,7 +28,7 @@ public class Sfx : MonoBehaviour
     AudioClip select, deny, stack, bomb, shuffle, clear, fail, click, tick, slide, revive;
     float lastSnap;
 
-    public static void Select() => Play(i => i.select, 0.45f);
+    public static void Select() => Play(i => i.select, 0.9f);
     public static void Deny() => Play(i => i.deny, 0.5f);
     /// <summary>덮인 패를 눌렀을 때: 요란하지 않게, 손끝으로 패를 살짝 건드린 듯한 작고 짧은 "톡".</summary>
     public static void Blocked() => Play(i => i.blocked, 0.35f);
@@ -40,21 +40,21 @@ public class Sfx : MonoBehaviour
         if (instance == null) return;
         instance.PlayClip(instance.stackSlap != null ? instance.stackSlap : instance.stack, 1f);
     }
-    public static void Shuffle() => Play(i => i.shuffle, 0.6f);
-    public static void Clear() => Play(i => i.clear, 0.8f);
-    public static void Fail() => Play(i => i.fail, 0.7f);
+    public static void Shuffle() => Play(i => i.shuffle, 0.8f);
+    public static void Clear() => Play(i => i.clear, 0.62f);
+    public static void Fail() => Play(i => i.fail, 0.45f);
     public static void Click() => Play(i => i.click, 0.45f);
     public static void Tick() => Play(i => i.tick, 0.35f);
     public static void Slide() => Play(i => i.slide, 0.25f);
-    public static void Revive() => Play(i => i.revive, 0.7f);
-    public static void Golden() => Play(i => i.golden, 0.9f);
+    public static void Revive() => Play(i => i.revive, 0.42f);
+    public static void Golden() => Play(i => i.golden, 0.68f);
 
     /// <summary>클리어 창에서 광 하나가 찍힐 때: 밝은 "칭~ 띠링" (0, 1, 2번째로 한 음씩 올라간다).</summary>
     public static void Star(int index)
     {
         if (instance == null) return;
         int i = Mathf.Clamp(index, 0, 2);
-        instance.PlayClip(instance.star[i], 0.8f);
+        instance.PlayClip(instance.star[i], 0.56f);
     }
 
     /// <summary>짝을 맞췄을 때. combo는 연속 몇 번째인지(1부터), 높을수록 종소리가 올라간다.</summary>
@@ -69,7 +69,7 @@ public class Sfx : MonoBehaviour
     }
 
     /// <summary>폭탄. 여러 장이 연달아 터질 때는 첫 소리만 크게.</summary>
-    public static void Bomb(float volume = 1f) => Play(i => i.bomb, 0.9f * volume);
+    public static void Bomb(float volume = 1f) => Play(i => i.bomb, 0.8f * volume);
 
     /// <summary>배경음악 설정이 바뀌었을 때 호출한다.</summary>
     public static void RefreshMusic()
@@ -338,15 +338,15 @@ public class Sfx : MonoBehaviour
         return ToClip("blocked", Normalize(b, 0.5f));
     }
 
-AudioClip BuildClick()
+    AudioClip BuildClick()
     {
-        // "뽁": 물방울 터지듯 음이 짧게 쭉 올라가는 밝은 소리 (500Hz → 1500Hz, 30ms)
+        // "뽁": 물방울 터지듯 음이 짧게 쭉 올라가는 소리 (250Hz → 750Hz, 30ms)
         var b = new float[(int)(0.07f * Rate)];
         float phase = 0f;
         for (int i = 0; i < b.Length; i++)
         {
             float t = i / (float)Rate;
-            float f = 500f + 1000f * (1f - Mathf.Exp(-t / 0.012f));
+            float f = 250f + 500f * (1f - Mathf.Exp(-t / 0.012f));
             phase += 2f * Mathf.PI * f / Rate;
             float env = Mathf.Min(1f, t / 0.002f) * Mathf.Exp(-t / 0.016f);
             b[i] = (Mathf.Sin(phase) + 0.25f * Mathf.Sin(2f * phase)) * env;
@@ -354,7 +354,7 @@ AudioClip BuildClick()
         return ToClip("click", Normalize(b, 0.5f));
     }
 
-AudioClip BuildTick()
+    AudioClip BuildTick()
     {
         // 조용한 "띡" 한 번: 맑은 사인파 하나만, 짧게
         var b = new float[(int)(0.06f * Rate)];
@@ -396,29 +396,76 @@ AudioClip BuildTick()
         return ToClip("stack", Normalize(b, 0.9f));
     }
 
-AudioClip BuildBomb()
+    AudioClip BuildBomb()
     {
-        // 캐주얼한 "뻥!": 만화처럼 음이 뚝 떨어지는 퐁 + 짧고 밝은 바람 소리 + 가벼운 쿵. 무겁게 울리지 않고 0.6초 안에 끝난다.
-        var b = new float[(int)(0.6f * Rate)];
-        float popPhase = 0f, boomPhase = 0f, lp = 0f;
-        for (int i = 0; i < b.Length; i++)
+        // 쾅 + 터지는 잡음 + 파편 (처음 만든 소리의 결 그대로, 다듬어서):
+        //  - 낮은 쾅(120Hz → 35Hz)은 폰 스피커에서 거의 안 들리므로 살짝 포화시켜 배음(들리는 높이)을 만든다
+        //  - 잡음은 2단 필터로 부드럽게 어두워지고, 맨 앞 3ms에 또렷한 타격음
+        //  - 파편은 한 샘플짜리 "틱" 대신 몇 ms짜리 작은 알갱이로
+        //  - 짧은 잔향을 살짝 깔고 끝은 부드럽게 닫는다
+        int n = (int)(1.2f * Rate);
+        var b = new float[n];
+        float phase = 0f, lp1 = 0f, lp2 = 0f;
+        float grainLeft = 0f, grainAmp = 0f, grainLp = 0f, grainCut = 0f;
+        for (int i = 0; i < n; i++)
         {
             float t = i / (float)Rate;
-            // 퐁: 900Hz → 180Hz
-            float pf = 180f + 720f * Mathf.Exp(-t / 0.035f);
-            popPhase += 2f * Mathf.PI * pf / Rate;
-            float pop = Mathf.Sin(popPhase) * Mathf.Min(1f, t / 0.002f) * Mathf.Exp(-t / 0.07f);
-            // 가벼운 쿵: 160Hz → 60Hz
-            float bf = 60f + 100f * Mathf.Exp(-t / 0.06f);
-            boomPhase += 2f * Mathf.PI * bf / Rate;
-            float boom = Mathf.Sin(boomPhase) * Mathf.Exp(-t / 0.14f) * 0.8f;
-            // 펑 하고 퍼지는 바람: 밝게 시작해 금방 어두워진다
-            float cut = Mathf.Lerp(0.08f, 0.8f, Mathf.Exp(-t / 0.05f));
-            lp += (Noise() - lp) * cut;
-            float air = lp * Mathf.Exp(-t / 0.1f) * 1.1f;
-            b[i] = pop + boom + air;
+            float f = 35f + 85f * Mathf.Exp(-t / 0.12f);
+            phase += 2f * Mathf.PI * f / Rate;
+            float boomRaw = Mathf.Sin(phase) * Mathf.Exp(-t / 0.35f) * Mathf.Min(1f, t / 0.003f);
+            float boom = (float)System.Math.Tanh(boomRaw * 2.2f) * 0.75f;
+
+            float cut = Mathf.Lerp(0.02f, 0.6f, Mathf.Exp(-t / 0.08f));
+            lp1 += (Noise() - lp1) * cut;
+            lp2 += (lp1 - lp2) * cut;
+            float blast = lp2 * Mathf.Exp(-t / 0.22f) * 2.6f;
+
+            float hit = Noise() * Mathf.Exp(-t / 0.003f) * 0.6f;
+
+            if (grainLeft <= 0f && t > 0.04f && t < 0.8f && Noise() > 0.9993f - 0.0012f * Mathf.Exp(-t / 0.3f))
+            {
+                grainLeft = 0.002f + 0.004f * (0.5f + 0.5f * Noise());
+                grainAmp = (0.6f + 0.4f * Noise()) * Mathf.Exp(-t / 0.4f);
+                grainCut = 0.25f + 0.2f * Noise();
+            }
+            float crackle = 0f;
+            if (grainLeft > 0f)
+            {
+                grainLp += (Noise() - grainLp) * grainCut;
+                crackle = grainLp * grainAmp * 1.6f;
+                grainLeft -= 1f / Rate;
+            }
+            b[i] = boom + blast + hit + crackle;
         }
-        return ToClip("bomb", Normalize(b, 0.9f));
+        AddRoom(b, 0.12f);
+        for (int i = 0; i < n; i++)
+        {
+            float tail = (n - i) / (float)Rate;
+            if (tail < 0.15f) b[i] *= tail / 0.15f;
+        }
+        return ToClip("bomb", Normalize(b, 0.95f));
+    }
+
+    /// <summary>짧은 잔향: 서로 다른 길이의 되먹임 지연 넷을 섞어 살짝 깐다 (방 안에서 터진 듯한 여운).</summary>
+    static void AddRoom(float[] b, float wet)
+    {
+        int[] delays = { 1116, 1188, 1277, 1356 };
+        var outBuf = new float[b.Length];
+        foreach (int d in delays)
+        {
+            var line = new float[d];
+            int k = 0;
+            float damp = 0f;
+            for (int i = 0; i < b.Length; i++)
+            {
+                float y = line[k];
+                damp += (y - damp) * 0.4f;
+                line[k] = b[i] + damp * 0.72f;
+                k = (k + 1) % d;
+                outBuf[i] += y * 0.25f;
+            }
+        }
+        for (int i = 0; i < b.Length; i++) b[i] += outBuf[i] * wet;
     }
 
     AudioClip BuildShuffle()

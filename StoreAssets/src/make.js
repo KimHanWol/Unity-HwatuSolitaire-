@@ -1,6 +1,8 @@
-// 스토어 그래픽(앱 아이콘 512, 피처 그래픽 1024x500)을 HTML로 그려 크롬 헤드리스로 찍는다.
+// 스토어 피처 그래픽(1024x500)을 앱 아이콘 시안 A와 같은 모양으로 그려 크롬 헤드리스로 찍는다.
+// (하늘색 배경, 층층이 쌓인 패 위에서 벚꽃 짝 두 장이 빛난다. 광 패·초록 담요는 쓰지 않는다.)
 // 사용: node StoreAssets/src/make.js <화투 SVG 폴더>   (Tools/Cards/README.md 의 위키미디어 SVG)
 // 결과: StoreAssets/feature-ko.png, StoreAssets/feature-en.png
+// 앱 아이콘은 icons.js (시안 A를 icon-512.png 와 Assets/Icon/AppIcon.png 로 복사해 쓴다)
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
 const SVG = process.argv[2];
 if (!SVG) { console.error('usage: node make.js <svg dir>'); process.exit(1); }
@@ -9,46 +11,45 @@ const url = p => 'file:///' + path.resolve(p).split(path.sep).join('/');
 const card = n => url(path.join(SVG, 'Hwatu_' + n + '.svg'));
 const font = url(path.join(ROOT, 'Assets/Resources/Fonts/Jua-Regular.ttf'));
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const AR = 168.2 / 103.2;
 
 const base = `
 @font-face { font-family: Jua; src: url('${font}'); }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { width: 100%; height: 100%; overflow: hidden; }
-body { font-family: Jua, sans-serif; background: radial-gradient(ellipse at 50% 40%, #2E8C55 0%, #1E6E40 55%, #0F4A2A 100%); position: relative; }
-.card { position: absolute; border-radius: 6%; overflow: hidden; box-shadow: 0 10px 24px rgba(0,0,0,.45); }
+html, body { width: 1024px; height: 500px; overflow: hidden; }
+body { font-family: Jua, sans-serif; position: relative;
+  background: radial-gradient(ellipse at 72% 40%, #8FD3F4 0%, #4A9FE0 55%, #2F6FB8 100%); }
+.card { position: absolute; border-radius: 7%; overflow: hidden; }
 .card img { width: 100%; height: 100%; display: block; }
-.stamp { position: absolute; display: flex; align-items: center; justify-content: center; border-radius: 50%;
-  background: radial-gradient(circle at 40% 35%, #F0303F, #D01E2E 55%, #8A0C18); color: #FFF5DF;
-  border: solid #FFF5DF; box-shadow: 0 8px 20px rgba(0,0,0,.45); text-shadow: 0 4px 0 #8A0C18; }
+.dim::after { content: ''; position: absolute; inset: 0; background: rgba(40,20,10,.38); }
+.spark { position: absolute; width: 60px; height: 60px; margin: -30px 0 0 -30px; }
+.title { position: absolute; left: 64px; color: #FFFFFF; text-shadow: 0 5px 0 #1A4F91, 0 0 2px #1A4F91; line-height: 1.05; }
+.title b { color: #FFE38A; font-weight: normal; }
+.sub { position: absolute; left: 68px; color: #FFE38A; text-shadow: 0 3px 0 #1A4F91; }
+.tag { position: absolute; left: 68px; top: 372px; color: #FFFFFF; font-size: 30px; text-shadow: 0 2px 0 #1A4F91; }
 `;
-function c(name, x, y, w, rot, z = 1) {
-  const h = w * 168.2 / 103.2;
-  return `<div class="card" style="left:${x - w / 2}px;top:${y - h / 2}px;width:${w}px;height:${h}px;transform:rotate(${rot}deg);z-index:${z}"><img src="${card(name)}"></div>`;
+const c = (n, x, y, w, rot = 0, cls = '', z = 1) =>
+  `<div class="card ${cls}" style="left:${x - w / 2}px;top:${y - w * AR / 2}px;width:${w}px;height:${w * AR}px;transform:rotate(${rot}deg);z-index:${z};`
+  + `box-shadow:0 7px 0 #7A0A14,${cls.includes('glow') ? '0 0 0 6px #FFE38A, 0 0 34px 10px rgba(255,214,90,.9)' : '0 6px 14px rgba(0,0,0,.35)'}"><img src="${card(n)}"></div>`;
+const spark = (x, y, s, z = 9) => `<svg class="spark" viewBox="-30 -30 60 60" style="left:${x}px;top:${y}px;transform:scale(${s});z-index:${z};filter:drop-shadow(0 0 6px #FFE38A)"><path d="M0-30 C3-6 6-3 30 0 C6 3 3 6 0 30 C-3 6-6 3-30 0 C-6-3-3-6 0-30Z" fill="#fff"/></svg>`;
+
+// 오른쪽: 아이콘 A의 피라미드 (아래 3장 + 2장, 맨 위 벚꽃 짝이 빛남)
+function stack() {
+  const ox = 790, w = 104;
+  let s = '';
+  ['May_Kasu_1', 'February_Kasu_1', 'April_Kasu_1'].forEach((n, i) => s += c(n, ox - 118 + i * 118, 330, w, 0, 'dim', 1));
+  ['April_Tanzaku', 'May_Tanzaku'].forEach((n, i) => s += c(n, ox - 59 + i * 118, 296, w, 0, 'dim', 2));
+  s += c('March_Kasu_1', ox - 58, 222, 116, -8, 'glow', 3) + c('March_Kasu_2', ox + 58, 222, 116, 8, 'glow', 4);
+  s += spark(ox, 112, 1.0) + spark(ox + 150, 140, 0.55) + spark(ox - 160, 150, 0.5) + spark(ox + 175, 420, 0.4);
+  return s;
 }
 
-const icon = `<html><head><style>${base}</style></head><body>
-${c('March_Tanzaku', 200, 226, 196, -14, 1)}
-${c('March_Hikari', 290, 236, 196, 9, 2)}
-<div class="stamp" style="left:262px;top:276px;width:170px;height:170px;border-width:9px;font-size:82px;z-index:3;transform:rotate(-10deg)">짝!</div>
-</body></html>`;
-
-function feature(title, sub, tagline) {
-  return `<html><head><style>${base}
-  .title { position: absolute; left: 64px; top: 120px; color: #FFF5DF; font-size: ${title.size}px; line-height: 1.05;
-           text-shadow: 0 5px 0 #3A200E, 0 0 2px #3A200E; }
-  .title b { color: #F5C54A; }
-  .sub { position: absolute; left: 68px; top: ${120 + title.size * 1.15}px; color: #F5C54A; font-size: ${sub.size}px; text-shadow: 0 3px 0 #3A200E; }
-  .tag { position: absolute; left: 68px; top: 360px; color: #FFF5DF; font-size: 30px; opacity: .92; text-shadow: 0 2px 0 #0F4A2A; }
-  </style></head><body>
-  <div class="title">${title.text}</div>
-  <div class="sub">${sub.text}</div>
+function feature(titleHtml, titleSize, titleTop, subText, subTop, tagline) {
+  return `<html><head><style>${base}</style></head><body>
+  <div class="title" style="top:${titleTop}px;font-size:${titleSize}px">${titleHtml}</div>
+  ${subText ? `<div class="sub" style="top:${subTop}px;font-size:40px">${subText}</div>` : ''}
   <div class="tag">${tagline}</div>
-  ${c('January_Hikari', 745, 245, 150, -16, 1)}
-  ${c('August_Hikari', 830, 215, 150, -4, 2)}
-  ${c('December_Hikari', 915, 237, 150, 10, 3)}
-  ${c('March_Hikari', 805, 300, 150, 4, 4)}
-  ${c('March_Tanzaku', 890, 318, 150, 15, 5)}
-  <div class="stamp" style="left:880px;top:345px;width:116px;height:116px;border-width:7px;font-size:58px;z-index:6;transform:rotate(-10deg)">짝!</div>
+  ${stack()}
   </body></html>`;
 }
 
@@ -62,6 +63,5 @@ function shot(html, out, w, h) {
 }
 
 const OUT = path.join(ROOT, 'StoreAssets');
-// 앱 아이콘은 icons.js (시안 A를 icon-512.png 와 Assets/Icon/AppIcon.png 로 복사해 쓴다)
-shot(feature({ text: '<b>짝!</b> 화투 사천성', size: 82 }, { text: 'Hwatu Solitaire', size: 40 }, '층층이 쌓인 화투, 같은 달끼리 짝!'), path.join(OUT, 'feature-ko.png'), 1024, 500);
-shot(feature({ text: 'Hwatu<br>Solitaire', size: 88 }, { text: '', size: 1 }, 'Match Korean flower cards, month by month!'), path.join(OUT, 'feature-en.png'), 1024, 500);
+shot(feature('<b>짝!</b> 화투 사천성', 80, 128, 'Hwatu Solitaire', 228, '층층이 쌓인 화투, 같은 달끼리 짝!'), path.join(OUT, 'feature-ko.png'), 1024, 500);
+shot(feature('Hwatu<br>Solitaire', 84, 96, 'Tile Match', 284, 'Match Korean flower cards!'), path.join(OUT, 'feature-en.png'), 1024, 500);

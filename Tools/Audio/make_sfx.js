@@ -159,26 +159,12 @@ snap('stack_slap', '232928', 2.128, { shelf: 4, rate: 1.0, len: 0.24, hold: 0.02
   write('shuffle', finish(envelope(x, 0.6, 0.15), 1.0, -4), 5);
 }
 
-// ------------------------------------------------------------ 폭탄·클리어·실패·버튼 (넷째 인자: Kenney 묶음 폴더가 있을 때만)
-// 재료 (모두 CC0, https://kenney.nl): Sci-fi Sounds, Interface Sounds, Music Jingles — 한 폴더 아래 풀어 둔다.
+// ------------------------------------------------------------ 시간 초과·이어하기 (넷째 인자: Kenney 묶음 폴더가 있을 때만)
+// 재료 (모두 CC0, https://kenney.nl): Interface Sounds, Music Jingles — 한 폴더 아래 풀어 둔다.
+// 폭탄·클리어·버튼·째깍은 녹음을 써 보니 다른 소리와 결이 달라서 코드 합성(Sfx.cs)을 쓴다.
 const KENNEY = process.argv[5];
 if (KENNEY) {
   const k = name => { const f = find(KENNEY, name); if (!f) throw new Error(name + ' not found in ' + KENNEY); return f; };
-
-  // 폭탄 "펑": 바삭한 폭발 + 낮은 울림을 짧게, 위에 패가 흩어지는 소리를 살짝. 자주 터지니 무겁지 않게 0.7초 안에 끝낸다.
-  {
-    const crunch = alignPeak(decode(k('explosionCrunch_000.ogg'), 'highpass=f=90'), 0.004);
-    const low = alignPeak(decode(k('lowFrequency_explosion_001.ogg'), 'lowpass=f=400'), 0.006);
-    const fan = alignPeak(decode(k('card-fan-1.ogg'), 'highpass=f=900'), 0.01);
-    const x = mix([{ data: crunch, gain: 1.0 }, { data: low, gain: 0.8 }, { data: fan, gain: 0.35, delay: 0.03 }], 0.7);
-    write('bomb', finish(envelope(x, 0.12, 0.16), 1.2, -4));
-  }
-
-  // 클리어: 피치카토가 통통 올라가는 짧은 가락 (뒤이어 광 소리가 나오므로 1초 안팎)
-  {
-    const x = decode(k('jingles_PIZZI02.ogg'), 'silenceremove=start_periods=1:start_threshold=-50dB');
-    write('clear', finish(envelope(x, 0.8, 0.2), 1.0, -5));
-  }
 
   // 시간 초과: 피치카토가 반음씩 내려가는 가락
   {
@@ -186,8 +172,6 @@ if (KENNEY) {
     write('fail', finish(envelope(x, 1.1, 0.2), 1.0, -5));
   }
 
-  // 버튼 누름 / 시간 얼마 안 남았을 때 째깍 / 이어하기
-  write('click', finish(decode(k('click_001.ogg')), 1.0, -6), 5);
-  write('tick', finish(decode(k('tick_004.ogg')), 1.0, -6), 5);
+  // 이어하기
   write('revive', finish(decode(k('confirmation_002.ogg')), 1.0, -3), 5);
 }

@@ -100,7 +100,8 @@ public class TutorialDirector : MonoBehaviour
         text.rectTransform.offsetMin = new Vector2(40f, 10f);
         text.rectTransform.offsetMax = new Vector2(-40f, -10f);
         next = Ui.Button(panel, new Vector2(200f, 96f), Art.Green, Art.GreenDark, Loc.T("다음", "Next"), null, Next, 42, "Next");
-        Ui.Place((RectTransform)next.transform, 1f, 0f, new Vector2(200f, 96f), new Vector2(-130f, 62f));
+        // 오른쪽 가운데: 아래 테두리(와 버튼 아랫단 그림자)에 닿지 않게
+        Ui.Place((RectTransform)next.transform, 1f, 0.5f, new Vector2(200f, 96f), new Vector2(-135f, 6f));
         next.gameObject.SetActive(false);
 
         pointer = Ui.Rect("Pointer", root);

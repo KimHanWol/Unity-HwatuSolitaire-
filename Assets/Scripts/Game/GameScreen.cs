@@ -970,8 +970,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
         float y = 300f;
         if (revives < MaxRevives)
         {
-            p.Label(Loc.T("광고를 보고 " + bonus + "초 더 할까요?", "Watch an ad for +" + bonus + " seconds?"), 46, Art.GreyDark, 250f);
-            p.Button(Loc.T("+" + bonus + "초 이어하기", "Continue +" + bonus + "s"), Art.IconVideo, Art.Green, Art.GreenDark, y + 90f, () =>
+            p.Label(Loc.T("광고를 보면 " + bonus + "초를 더 받아 이어서 할 수 있어요.", "Watch an ad to get " + bonus + " more seconds."), 40, Art.GreyDark, 250f);
+            var revive = p.Button(Loc.T("광고 보고 이어하기", "Watch ad & continue"), null, Art.Green, Art.GreenDark, y + 90f, () =>
             {
                 if (!Ads.RewardedReady(Ads.Reward.Revive))
                 {
@@ -985,6 +985,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
                     Revive(bonus);
                 });
             }, 0f, 0f, 150f);
+            Ui.AdTag(revive, Art.GreenDark);
             y += 200f;
         }
         p.Button(Loc.T("다시 하기", "Retry"), Art.IconRetry, Art.Red, Art.RedDark, y + 80f, RetryWithAd);
@@ -1106,7 +1107,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         if (canCharge)
         {
             int extra = BonusSeconds;
-            p.Button(Loc.T("+" + extra + "초 받고 다시 하기", "Retry with +" + extra + "s"), Art.IconVideo, Art.Blue, Art.BlueDark, y + 60f, () =>
+            var charge = p.Button(Loc.T("+" + extra + "초 받고 다시 하기", "Retry with +" + extra + "s"), null, Art.Blue, Art.BlueDark, y + 60f, () =>
             {
                 if (!Ads.RewardedReady(Ads.Reward.TimeCharge))
                 {
@@ -1118,6 +1119,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
                     if (ok && this != null) App.I.Play(def.number, extra);
                 });
             }, 0f, 0f, 120f);
+            Ui.AdTag(charge, Art.BlueDark);
             y += 150f;
         }
 

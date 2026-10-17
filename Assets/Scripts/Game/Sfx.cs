@@ -44,7 +44,7 @@ public class Sfx : MonoBehaviour
     public static void Clear() => Play(i => i.clear, 0.8f);
     public static void Fail() => Play(i => i.fail, 0.7f);
     public static void Click() => Play(i => i.click, 0.45f);
-    public static void Tick() => Play(i => i.tick, 0.5f);
+    public static void Tick() => Play(i => i.tick, 0.35f);
     public static void Slide() => Play(i => i.slide, 0.25f);
     public static void Revive() => Play(i => i.revive, 0.7f);
     public static void Golden() => Play(i => i.golden, 0.9f);
@@ -338,26 +338,33 @@ public class Sfx : MonoBehaviour
         return ToClip("blocked", Normalize(b, 0.5f));
     }
 
-    AudioClip BuildClick()
+AudioClip BuildClick()
     {
+        // "뽁": 물방울 터지듯 음이 짧게 쭉 올라가는 밝은 소리 (500Hz → 1500Hz, 30ms)
         var b = new float[(int)(0.07f * Rate)];
+        float phase = 0f;
         for (int i = 0; i < b.Length; i++)
         {
             float t = i / (float)Rate;
-            b[i] = Mathf.Sin(2f * Mathf.PI * 980f * t) * Mathf.Exp(-t / 0.018f) + Noise() * Mathf.Exp(-t / 0.002f) * 0.3f;
+            float f = 500f + 1000f * (1f - Mathf.Exp(-t / 0.012f));
+            phase += 2f * Mathf.PI * f / Rate;
+            float env = Mathf.Min(1f, t / 0.002f) * Mathf.Exp(-t / 0.016f);
+            b[i] = (Mathf.Sin(phase) + 0.25f * Mathf.Sin(2f * phase)) * env;
         }
         return ToClip("click", Normalize(b, 0.5f));
     }
 
-    AudioClip BuildTick()
+AudioClip BuildTick()
     {
-        var b = new float[(int)(0.1f * Rate)];
+        // 조용한 "띡" 한 번: 맑은 사인파 하나만, 짧게
+        var b = new float[(int)(0.06f * Rate)];
         for (int i = 0; i < b.Length; i++)
         {
             float t = i / (float)Rate;
-            b[i] = Mathf.Sin(2f * Mathf.PI * 2400f * t) * Mathf.Exp(-t / 0.01f) + Mathf.Sin(2f * Mathf.PI * 1200f * t) * Mathf.Exp(-t / 0.02f) * 0.5f;
+            float env = Mathf.Min(1f, t / 0.002f) * Mathf.Exp(-t / 0.012f);
+            b[i] = Mathf.Sin(2f * Mathf.PI * 1760f * t) * env;
         }
-        return ToClip("tick", Normalize(b, 0.55f));
+        return ToClip("tick", Normalize(b, 0.4f));
     }
 
     AudioClip BuildDeny()
@@ -389,27 +396,29 @@ public class Sfx : MonoBehaviour
         return ToClip("stack", Normalize(b, 0.9f));
     }
 
-    AudioClip BuildBomb()
+AudioClip BuildBomb()
     {
-        var b = new float[(int)(1.2f * Rate)];
-        float phase = 0f, lp = 0f;
+        // 캐주얼한 "뻥!": 만화처럼 음이 뚝 떨어지는 퐁 + 짧고 밝은 바람 소리 + 가벼운 쿵. 무겁게 울리지 않고 0.6초 안에 끝난다.
+        var b = new float[(int)(0.6f * Rate)];
+        float popPhase = 0f, boomPhase = 0f, lp = 0f;
         for (int i = 0; i < b.Length; i++)
         {
             float t = i / (float)Rate;
-            // 쾅: 120Hz → 35Hz
-            float f = 35f + 85f * Mathf.Exp(-t / 0.12f);
-            phase += 2f * Mathf.PI * f / Rate;
-            float boom = Mathf.Sin(phase) * Mathf.Exp(-t / 0.35f) * 1.2f;
-            // 터지는 잡음: 점점 어두워진다
-            float cut = Mathf.Lerp(0.02f, 0.6f, Mathf.Exp(-t / 0.08f));
+            // 퐁: 900Hz → 180Hz
+            float pf = 180f + 720f * Mathf.Exp(-t / 0.035f);
+            popPhase += 2f * Mathf.PI * pf / Rate;
+            float pop = Mathf.Sin(popPhase) * Mathf.Min(1f, t / 0.002f) * Mathf.Exp(-t / 0.07f);
+            // 가벼운 쿵: 160Hz → 60Hz
+            float bf = 60f + 100f * Mathf.Exp(-t / 0.06f);
+            boomPhase += 2f * Mathf.PI * bf / Rate;
+            float boom = Mathf.Sin(boomPhase) * Mathf.Exp(-t / 0.14f) * 0.8f;
+            // 펑 하고 퍼지는 바람: 밝게 시작해 금방 어두워진다
+            float cut = Mathf.Lerp(0.08f, 0.8f, Mathf.Exp(-t / 0.05f));
             lp += (Noise() - lp) * cut;
-            float blast = lp * Mathf.Exp(-t / 0.22f) * 2.2f;
-            // 파편: 드문드문 튀는 짧은 딱딱 소리
-            float crackle = 0f;
-            if (t > 0.05f && t < 0.8f && Noise() > 0.995f - 0.004f * Mathf.Exp(-t / 0.3f)) crackle = Noise() * Mathf.Exp(-t / 0.4f) * 1.5f;
-            b[i] = boom + blast + crackle;
+            float air = lp * Mathf.Exp(-t / 0.1f) * 1.1f;
+            b[i] = pop + boom + air;
         }
-        return ToClip("bomb", Normalize(b, 0.95f));
+        return ToClip("bomb", Normalize(b, 0.9f));
     }
 
     AudioClip BuildShuffle()

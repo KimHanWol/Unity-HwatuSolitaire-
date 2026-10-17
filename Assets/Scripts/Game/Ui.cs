@@ -153,6 +153,19 @@ public static class Ui
         return button;
     }
 
+    /// <summary>보상형 광고 버튼: 글자 왼쪽에 "AD" 꼬리표를 붙인다 (아이콘 없이 만든 버튼에).</summary>
+    public static Button AdTag(Button b, Color ink)
+    {
+        var content = (RectTransform)b.transform.Find("Face/Content");
+        var label = content.Find("Label") as RectTransform;
+        var tag = Image(content, Art.Round, new Color(1f, 0.96f, 0.82f), "AdTag");
+        Place(tag.rectTransform, 0f, 0.5f, new Vector2(92f, 56f), new Vector2(46f + 30f, 2f));
+        var t = Text(tag.rectTransform, "AD", 36, ink, TextAnchor.MiddleCenter, "Text");
+        Stretch(t.rectTransform);
+        if (label != null) label.offsetMin = new Vector2(92f + 30f, label.offsetMin.y);
+        return b;
+    }
+
     /// <summary>버튼 글자를 바꾼다 (언어 전환 등).</summary>
     public static void SetLabel(Button b, string label)
     {

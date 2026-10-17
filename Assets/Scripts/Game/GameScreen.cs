@@ -852,6 +852,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         RefreshBombMarks();
         RefreshFree();
         AfterRemoval(last + 0.45f);
+        if (!wholeMonth) tutorial?.OnDetonated(month);
     }
 
     /// <summary>
@@ -862,7 +863,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
     List<int> BlastTiles(int origin)
     {
         var result = new List<int> { origin };
-        int pairs = Mathf.Clamp(2 + board.CardCount / 24, 2, 5);
+        int pairs = tutorial != null ? TutorialDirector.BlastPairs : Mathf.Clamp(2 + board.CardCount / 24, 2, 5);
         var near = new List<int>();
         for (int i = 0; i < board.Count; i++) if (i != origin && board.Exposed(i)) near.Add(i);
         near.Sort((p, q) => Dist(p, origin).CompareTo(Dist(q, origin)));

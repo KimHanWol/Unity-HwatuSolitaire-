@@ -4,12 +4,12 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 튜토리얼: 정해진 작은 판(2층 16장: 2층 4장 + 아래층 12장)에서 손가락으로 짚어 주며 차례로 해 본다.
-///  ① 짝: 2층의 3월 벚꽃 두 장 (짝을 지우면 맨 아래 줄이 열린다)
-///  ② 덮인 패: 아직 2층 매조가 덮고 있는 패를 눌러 보면 안 눌린다 → 그 2월 매조 짝을 치우면 아래 패가 밝아진다
+/// 튜토리얼: 정해진 작은 판(20장: 아래층 4×4 + 2층 4장)에서 손가락으로 짚어 주며 차례로 해 본다.
+///  ① 짝: 2층의 3월 벚꽃 두 장 (짝을 지우면 아래 두 줄이 열린다)
+///  ② 덮인 패: 아직 2층 매조가 덮고 있는 패를 눌러 보면 안 눌린다
 ///  ③ 쌌다(뻑): 1월 두 장으로 짝 → 포개진 동안 셋째 패 → 뻑 폭탄 (튜토리얼에서는 고리 시간이 멈춰 있다)
-///     같은 걸 8월·12월로 두 번 더 → 뻑 폭탄 셋
-///  ④ 판에 폭탄 달 패만 남으면 폭탄 마무리 → 싹쓸이 → 황금 광 (설명을 읽고 "다음"을 눌러야 터진다)
+///  ④ 폭탄 쓰기: 남은 1월 패를 누르면 그 패와 둘레의 매조 짝이 함께 펑 → 위 두 줄이 열린다
+///  ⑤ 8월·12월·9월로 쌌다 세 번 → 뻑 폭탄 셋 → "다음"을 누르면 폭탄 마무리 → 싹쓸이 → 황금 광
 /// 짚은 패 말고는 누를 수 없다. 끝나면 TutorialDirector.Done 이 켜지고 1탄으로 간다.
 /// </summary>
 public class TutorialDirector : MonoBehaviour
@@ -22,32 +22,43 @@ public class TutorialDirector : MonoBehaviour
         set { PlayerPrefs.SetInt(DoneKey, value ? 1 : 0); PlayerPrefs.Save(); }
     }
 
+    /// <summary>튜토리얼에서 폭탄이 둘레 짝을 몇 쌍 터뜨리는지 (매조 한 쌍만 정확히 터지게).</summary>
+    public const int BlastPairs = 1;
+
     // ------------------------------------------------------------ 판 (자리 번호)
-    // 2층: X1(1,1) X2(5,1) — 아래층 위 두 줄 여덟 장을 덮는다.
-    //      P1(1,4) P2(5,4) — 아래층 맨 아래 줄 네 장을 덮는다 (첫 짝).
-    // 아래층 (x = 0,2,4,6), 처음엔 모두 덮여 있다:
-    //   y=0: A4 B2 B3 C4
-    //   y=2: C1 C2 C3 B4
-    //   y=4: A1 A2 A3 B1
-    const int X1 = 0, X2 = 1, A4 = 2, B2 = 3, B3 = 4, C4 = 5, C1 = 6, C2 = 7, C3 = 8, B4 = 9, A1 = 10, A2 = 11, A3 = 12, B1 = 13, P1 = 14, P2 = 15;
-    const int MonthP = 2, MonthX = 1, MonthA = 0, MonthB = 7, MonthC = 11; // 3월 벚꽃, 2월 매조, 1월 송학, 8월 공산, 12월 비
+    // 2층: X1(1,1) X2(5,1) — 아래층 위 두 줄을 덮는다 (2월 매조)
+    //      P1(1,5) P2(5,5) — 아래층 아래 두 줄을 덮는다 (3월 벚꽃, 첫 짝)
+    // 아래층 (x = 0,2,4,6):
+    //   y=0: B4 C3 D3 C4
+    //   y=2: B2 C2 B3 D4
+    //   y=4: A4 A1 A2 D1
+    //   y=6: B1 A3 C1 D2
+    // 폭탄 쓰기: A4(0,4)에서 터지면, 열린 패 가운데 가장 가까운 같은 달 한 쌍이 매조(X1·X2)가 되도록
+    // 아래 두 줄의 다른 달은 한 장씩만 가깝게, 겹치는 9월(D1·D2)은 매조 X2보다 멀리 둔다.
+    const int X1 = 0, X2 = 1, P1 = 2, P2 = 3;
+    const int B4 = 4, C3 = 5, D3 = 6, C4 = 7;
+    const int B2 = 8, C2 = 9, B3 = 10, D4 = 11;
+    const int A4 = 12, A1 = 13, A2 = 14, D1 = 15;
+    const int B1 = 16, A3 = 17, C1 = 18, D2 = 19;
+    const int MonthP = 2, MonthX = 1, MonthA = 0, MonthB = 7, MonthC = 11, MonthD = 8; // 3월 벚꽃, 2월 매조, 1월 송학, 8월 공산, 12월 비, 9월 국진
 
     public static StageDef Stage()
     {
         int[] tiles =
         {
-            1, 1, 1,  5, 1, 1,
+            1, 1, 1,  5, 1, 1,  1, 5, 1,  5, 5, 1,
             0, 0, 0,  2, 0, 0,  4, 0, 0,  6, 0, 0,
             0, 2, 0,  2, 2, 0,  4, 2, 0,  6, 2, 0,
             0, 4, 0,  2, 4, 0,  4, 4, 0,  6, 4, 0,
-            1, 4, 1,  5, 4, 1,
+            0, 6, 0,  2, 6, 0,  4, 6, 0,  6, 6, 0,
         };
-        var cells = new int[16];
+        var cells = new int[20];
         cells[P1] = MonthP * 4 + 0; cells[P2] = MonthP * 4 + 3;
         cells[X1] = MonthX * 4 + 0; cells[X2] = MonthX * 4 + 2;
         cells[A1] = MonthA * 4 + 0; cells[A2] = MonthA * 4 + 2; cells[A3] = MonthA * 4 + 3; cells[A4] = MonthA * 4 + 1;
         cells[B1] = MonthB * 4 + 0; cells[B2] = MonthB * 4 + 1; cells[B3] = MonthB * 4 + 2; cells[B4] = MonthB * 4 + 3;
         cells[C1] = MonthC * 4 + 0; cells[C2] = MonthC * 4 + 1; cells[C3] = MonthC * 4 + 2; cells[C4] = MonthC * 4 + 3;
+        cells[D1] = MonthD * 4 + 0; cells[D2] = MonthD * 4 + 1; cells[D3] = MonthD * 4 + 2; cells[D4] = MonthD * 4 + 3;
         return new StageDef
         {
             number = 0,
@@ -118,32 +129,39 @@ public class TutorialDirector : MonoBehaviour
     public void OnSelected(int tile)
     {
         if (step == 0 && tile == P1) Go(1);
-        else if (step == 3 && tile == X1) Go(4);
-        else if (step == 6 && tile == A1) Go(7);
-        else if (step == 10 && tile == B1) Go(11);
-        else if (step == 13 && tile == C1) Go(14);
+        else if (step == 3 && tile == A1) Go(4);
+        else if (step == 8 && tile == B1) Go(9);
+        else if (step == 11 && tile == C1) Go(12);
+        else if (step == 14 && tile == D1) Go(15);
     }
 
     /// <summary>덮인 패를 눌렀을 때 (직접 눌러 보고 안 눌리는 걸 확인하는 단계).</summary>
     public void OnBlockedTap(int tile)
     {
-        if (step == 2 && tile == B2) Later(1.1f, 3);
+        if (step == 2 && tile == C2) Later(1.1f, 3);
     }
 
     public void OnMatched(int month)
     {
         if (step == 1 && month == MonthP) Later(0.7f, 2);
-        else if (step == 4 && month == MonthX) Later(0.6f, 5);
-        else if (step == 7 && month == MonthA) Go(8);
-        else if (step == 11 && month == MonthB) Go(12);
-        else if (step == 14 && month == MonthC) Go(15);
+        else if (step == 4 && month == MonthA) Go(5);
+        else if (step == 9 && month == MonthB) Go(10);
+        else if (step == 12 && month == MonthC) Go(13);
+        else if (step == 15 && month == MonthD) Go(16);
     }
 
     public void OnStacked(int month)
     {
-        if (step == 8 && month == MonthA) Later(1.4f, 9);
-        else if (step == 12 && month == MonthB) Later(1.4f, 13);
-        else if (step == 15 && month == MonthC) Later(1.4f, 16);
+        if (step == 5 && month == MonthA) Later(1.4f, 6);
+        else if (step == 10 && month == MonthB) Later(1.4f, 11);
+        else if (step == 13 && month == MonthC) Later(1.4f, 14);
+        else if (step == 16 && month == MonthD) Later(1.4f, 17);
+    }
+
+    /// <summary>폭탄을 직접 터뜨렸을 때.</summary>
+    public void OnDetonated(int month)
+    {
+        if (step == 6 && month == MonthA) Later(1.4f, 7);
     }
 
     void Later(float seconds, int nextStep)
@@ -154,13 +172,12 @@ public class TutorialDirector : MonoBehaviour
 
     void Next()
     {
-        if (step == 5) Go(6);
-        else if (step == 9) Go(10);
-        else if (step == 16)
+        if (step == 7) Go(8);
+        else if (step == 17)
         {
             // 설명을 다 읽고 나서 폭탄 마무리
             Hide();
-            step = 17;
+            step = 18;
             game.TutorialFinale();
         }
     }
@@ -200,67 +217,71 @@ public class TutorialDirector : MonoBehaviour
             case 2:
                 Say(Loc.T("벚꽃을 치우니 그 아래 패가 밝아졌죠? 패는 층층이 쌓여 있어요.\n아직 <color=#C8102E>어둡게 보이는 패</color>는 위에 다른 패가 덮고 있어요. 눌러 볼까요?",
                           "Clearing the cherry cards lit up the cards below.\n<color=#C8102E>Darker cards</color> are still covered. Try tapping one."));
-                Point(B2);
-                break;
-            case 3:
-                Say(Loc.T("덮인 패는 <color=#C8102E>눌리지 않아요</color>. 위 패부터 치워야 해요.\n위에 있는 2월 매조 두 장을 짝지어 볼까요?",
-                          "Covered cards <color=#C8102E>can't be picked</color>. Clear the top first.\nSnap the two February cards on top."));
-                Point(X1);
-                break;
-            case 4:
-                Say(Loc.T("같은 2월 매조 패를 하나 더!", "The other February card!"));
-                Point(X2);
-                break;
-            case 5:
-                Say(Loc.T("매조를 치우니 나머지 패도 모두 열렸어요.\n이제 이 패들을 고를 수 있어요.", "Now every card below is open\nand can be picked."));
-                ShowNext(true);
+                Point(C2);
                 break;
             // ③ 쌌다
-            case 6:
-                Say(Loc.T("이번엔 <color=#C8102E>쌌다!</color>를 해 볼게요.\n1월 송학 두 장으로 먼저 짝!", "Now let's make a <color=#C8102E>Ppeok</color>!\nFirst, snap two January cards."));
+            case 3:
+                Say(Loc.T("덮인 패는 <color=#C8102E>눌리지 않아요</color>. 위 패부터 치워야 해요.\n이번엔 <color=#C8102E>쌌다!</color>를 해 볼게요. 1월 송학 두 장으로 먼저 짝!",
+                          "Covered cards <color=#C8102E>can't be picked</color>.\nNow let's make a <color=#C8102E>Ppeok</color>! First, snap two January cards."));
                 Point(A1);
                 break;
-            case 7:
+            case 4:
                 Say(Loc.T("같은 1월 패를 하나 더!", "One more January card!"));
                 Point(A2);
                 break;
-            case 8:
+            case 5:
                 Say(Loc.T("짝 맞춘 두 장이 잠깐 포개져 있어요.\n금빛 고리가 줄기 전에 <color=#C8102E>같은 달 패를 하나 더</color> 누르면…",
                           "The pair stays stacked for a moment.\nTap <color=#C8102E>one more of that month</color> before the ring runs out..."));
                 Point(A3);
                 break;
-            case 9:
-                Say(Loc.T("<color=#C8102E>쌌다!</color> 세 장이 뭉쳐 <color=#C8102E>뻑 폭탄</color>이 됐어요.\n폭탄 달 패를 누르면 둘레 패까지 펑!\n하지만 지금은 아껴 둬요.",
-                          "<color=#C8102E>Stacked!</color> That's a <color=#C8102E>Ppeok bomb</color>.\nTapping that month blasts nearby pairs -\nbut save it for now."));
-                PointAt(game.TraySlot(0));
+            // ④ 폭탄 쓰기
+            case 6:
+                Say(Loc.T("<color=#C8102E>쌌다!</color> 세 장이 뭉쳐 <color=#C8102E>뻑 폭탄</color>이 됐어요.\n폭탄 달(1월)의 남은 패를 누르면 둘레 패까지 펑! 눌러 볼까요?",
+                          "<color=#C8102E>Stacked!</color> That's a <color=#C8102E>Ppeok bomb</color>.\nTap the last January card to blast it and nearby pairs!"));
+                Point(A4);
+                break;
+            case 7:
+                Say(Loc.T("펑! 위를 덮던 매조까지 함께 날아가서\n위쪽 패가 모두 열렸어요.", "Boom! The February cards on top went too,\nso every card is open now."));
                 ShowNext(true);
                 break;
-            case 10:
-                Say(Loc.T("8월 공산으로 한 번 더! 짝 → 셋째 패.", "Again with August: pair, then the third card."));
+            // ⑤ 쌌다 세 번 → 싹쓸이
+            case 8:
+                Say(Loc.T("이번엔 폭탄을 모아 볼게요.\n8월 공산으로 짝 → 셋째 패.", "Now let's collect bombs.\nAugust: pair, then the third card."));
                 Point(B1);
                 break;
-            case 11:
+            case 9:
                 Say(Loc.T("짝!", "Snap!"));
                 Point(B2);
                 break;
-            case 12:
+            case 10:
                 Say(Loc.T("고리가 줄기 전에 셋째 패!", "The third card, before the ring runs out!"));
                 Point(B3);
                 break;
-            case 13:
-                Say(Loc.T("마지막! 12월 비로 한 번 더.", "Last one! December this time."));
+            case 11:
+                Say(Loc.T("12월 비로 한 번 더.", "Again with December."));
                 Point(C1);
                 break;
-            case 14:
+            case 12:
                 Say(Loc.T("짝!", "Snap!"));
                 Point(C2);
                 break;
-            case 15:
+            case 13:
                 Say(Loc.T("셋째 패!", "The third card!"));
                 Point(C3);
                 break;
-            // ④ 싹쓸이
+            case 14:
+                Say(Loc.T("마지막! 9월 국진으로 한 번 더.", "Last one! September this time."));
+                Point(D1);
+                break;
+            case 15:
+                Say(Loc.T("짝!", "Snap!"));
+                Point(D2);
+                break;
             case 16:
+                Say(Loc.T("셋째 패!", "The third card!"));
+                Point(D3);
+                break;
+            case 17:
                 Say(Loc.T("뻑 폭탄이 셋! 판에 폭탄 달 패만 남으면\n저절로 펑! 펑! 펑! 터져요.\n뻑 폭탄 셋으로 판을 비우면 <color=#C8102E>싹쓸이</color>!",
                           "Three bombs! When only bomb cards are left,\nthey blow up on their own.\nClear the board with three bombs: <color=#C8102E>Sweep</color>!"));
                 ShowNext(true);

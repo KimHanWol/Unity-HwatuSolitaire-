@@ -1,6 +1,6 @@
 // 스토어 그래픽(앱 아이콘 512, 피처 그래픽 1024x500)을 HTML로 그려 크롬 헤드리스로 찍는다.
 // 사용: node StoreAssets/src/make.js <화투 SVG 폴더>   (Tools/Cards/README.md 의 위키미디어 SVG)
-// 결과: StoreAssets/icon-512.png, StoreAssets/feature-ko.png, StoreAssets/feature-en.png, Assets/Icon/AppIcon.png
+// 결과: StoreAssets/feature-ko.png, StoreAssets/feature-en.png
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
 const SVG = process.argv[2];
 if (!SVG) { console.error('usage: node make.js <svg dir>'); process.exit(1); }
@@ -62,8 +62,6 @@ function shot(html, out, w, h) {
 }
 
 const OUT = path.join(ROOT, 'StoreAssets');
-shot(icon, path.join(OUT, 'icon-512.png'), 512, 512);
-fs.mkdirSync(path.join(ROOT, 'Assets/Icon'), { recursive: true });
-shot(icon, path.join(ROOT, 'Assets/Icon/AppIcon.png'), 512, 512);
+// 앱 아이콘은 icons.js (시안 A를 icon-512.png 와 Assets/Icon/AppIcon.png 로 복사해 쓴다)
 shot(feature({ text: '<b>짝!</b> 화투 사천성', size: 82 }, { text: 'Hwatu Solitaire', size: 40 }, '층층이 쌓인 화투, 같은 달끼리 짝!'), path.join(OUT, 'feature-ko.png'), 1024, 500);
 shot(feature({ text: 'Hwatu<br>Solitaire', size: 88 }, { text: '', size: 1 }, 'Match Korean flower cards, month by month!'), path.join(OUT, 'feature-en.png'), 1024, 500);

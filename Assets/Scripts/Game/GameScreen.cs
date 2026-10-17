@@ -4,12 +4,13 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 게임 화면. 위: 일시정지·스테이지 이름·남은 시간과 광 기준. 가운데: 판. 아래: 쌌다(폭탄) 칸.
+/// 게임 화면. 위: 일시정지·스테이지 이름·남은 시간과 광 기준. 가운데: 판. 아래: 뻑 폭탄 칸.
 ///
 /// 규칙(화투 사천성, 타일 매치 방식): 패가 여러 층으로 쌓여 있다. 위가 덮이지 않은 "열린 패" 두 장이 같은 달이면
 /// "짝!" 하고 지운다 (옆은 상관없다). 덮인 패는 살짝 어둡게 보인다.
 /// 쌌다: 짝을 맞추면 두 장이 그 자리에 잠깐(stackWindow초, 고리 시간) 포개져 있다. 그 사이에 같은 달 열린 패를 하나 더 누르면
-/// 고스톱처럼 세 장이 뭉쳐 "쌌다!" → 그 뭉치가 아래 폭탄 칸으로 간다 (최대 3뭉치).
+/// 고스톱처럼 세 장이 뭉쳐 "쌌다!"(= 뻑) → 그 뭉치가 아래 폭탄 칸으로 간다 (최대 3뭉치).
+/// 화면에는 외침 "쌌다!"를 크게, 이름 "뻑"을 작게 함께 보여 준다 (고스톱을 잘 몰라도 뻑은 알아보게).
 /// 폭탄: 폭탄 칸에 있는 달의 열린 패를 판에서 하나 누르면 그 패와 둘레의 짝 몇 쌍이 한꺼번에 펑.
 /// 짝 단위로 지우므로 달마다 장수는 짝수로 돌아온다. 막히면(폭탄도 못 쓰면) 자동으로 섞는데, 섞은 판도 늘 풀린다(Rules.Shuffle).
 /// 시간 안에 다 지우면 클리어(걸린 시간으로 광), 시간이 다 되면 실패 → 광고 보고 시간 더 받아 이어하기.
@@ -162,7 +163,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         Ui.Place(timeText.rectTransform, 1f, 0.5f, new Vector2(180f, 80f), new Vector2(-100f, 0f));
         Ui.Outline(timeText, Art.WoodDark, 3f);
 
-        // 아래 띠: 쌌다(폭탄) 칸
+        // 아래 띠: 뻑 폭탄 칸
         var bottom = Ui.Rect("Bottom", rt);
         bottom.anchorMin = new Vector2(0f, 0f);
         bottom.anchorMax = new Vector2(1f, 0f);
@@ -174,7 +175,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         Ui.Stretch(trayBg.rectTransform);
         var trayEdge = Ui.Image(tray, Art.RoundOutline, new Color(Art.Gold.r, Art.Gold.g, Art.Gold.b, 0.6f), "Edge");
         Ui.Stretch(trayEdge.rectTransform, 4f);
-        var trayLabel = Ui.Text(tray, Loc.T("쌌다! 폭탄", "BOMBS"), 32, Art.Gold, TextAnchor.MiddleCenter, "Label");
+        var trayLabel = Ui.Text(tray, Loc.T("뻑 폭탄", "BOMBS"), 32, Art.Gold, TextAnchor.MiddleCenter, "Label");
         Ui.Place(trayLabel.rectTransform, 0.5f, 1f, new Vector2(400f, 44f), new Vector2(0f, -6f));
         Ui.Outline(trayLabel, Art.WoodDark, 2f);
         traySlots = new RectTransform[MaxBombs];
@@ -520,7 +521,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
             Fx.Flash(w, cellW * 4.5f, new Color(1f, 0.7f, 0.25f, 1f), 0.45f);
             Fx.Ring(w, new Color(1f, 0.8f, 0.3f, 0.9f), cellW * 4f, 0.4f);
             Fx.Burst(w, 20, Fx.FireColors, 1000f, Art.Spark, 0.6f, cellW * 0.3f, -900f);
-            Fx.Stamp(Loc.T("쌌다!", "STACKED!"), Art.MonthName(p.month) + Loc.T(" 폭탄! 같은 달 패를 누르면 펑", " bomb! Tap that month to blast"), Art.Gold, Art.RedDark);
+            Fx.Stamp(Loc.T("쌌다!", "STACKED!"), Loc.T("뻑! " + Art.MonthName(p.month) + " 폭탄 준비", "Ppeok! " + Art.MonthName(p.month) + " bomb ready"), Art.Gold, Art.RedDark);
 
             // 세 장 뭉치가 폭탄 칸으로 날아간다.
             var pile = new List<CardView> { third };

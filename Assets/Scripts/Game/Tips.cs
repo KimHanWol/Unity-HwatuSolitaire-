@@ -37,17 +37,17 @@ public static class Tips
             40, Art.GreyDark, 680f, 300f);
         p.Label(Loc.T("빨리 깰수록 광을 더 받아요. 3광에 도전!", "Clear fast to collect up to 3 Gwang (光)!"), 44, Art.Red, 900f, 80f);
         p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 1050f, () => p.Close(), 0f, 0f, 140f);
-        p.Button(Loc.T("쌌다·폭탄 규칙", "Stack & Bomb rules"), Art.IconBomb, Art.Red, Art.RedDark, 1200f, () => { p.Close(); ShowCombo(); }, 0f, 0f, 120f);
+        p.Button(Loc.T("뻑·폭탄 규칙", "Ppeok & Bomb rules"), Art.IconBomb, Art.Red, Art.RedDark, 1200f, () => { p.Close(); ShowCombo(); }, 0f, 0f, 120f);
     }
 
     public static void ShowCombo()
     {
-        var p = Popup.Open(new Vector2(920f, 1340f), Loc.T("쌌다! 그리고 펑!", "Stack & Boom!"), true);
+        var p = Popup.Open(new Vector2(920f, 1340f), Loc.T("쌌다! 뻑 폭탄", "Ppeok & Boom!"), true);
         var bomb = Ui.Image(p.Panel, Art.IconBomb, Color.white, "Bomb");
         Ui.Place(bomb.rectTransform, 0.5f, 1f, new Vector2(200f, 200f), new Vector2(0f, -240f));
         p.Label(Loc.T(
-            "짝을 맞추면 두 장이 잠깐 <color=#C8102E>포개져</color> 있어요.\n(둘레의 금빛 고리가 줄어드는 동안)\n\n그 사이에 <color=#C8102E>같은 달 패를 하나 더</color> 누르면\n세 장이 뭉쳐 \"쌌다!\" — 폭탄 칸으로 가요. (최대 3개)\n\n폭탄 달의 빛나는 패를 하나 누르면 그 패와\n둘레의 짝 여러 쌍이 한꺼번에 <color=#C8102E>펑!</color> 터져요.\n\n폭탄 달 패만 남으면 저절로 펑! 펑!\n폭탄으로 판을 비우면 <color=#C8102E>싹쓸이</color> → 황금 광!",
-            "After a pair, the two cards <color=#C8102E>stay stacked</color> briefly\n(while the gold ring runs down).\n\nTap <color=#C8102E>one more card of that month</color> in time and\nthe three clump up - \"Stacked!\" - into the bomb tray (max 3).\n\nTap a glowing card of a bomb month: it and\nseveral nearby pairs go <color=#C8102E>BOOM</color> at once!\n\nIf only bomb cards are left, they blow up on their own.\nClear the board with a bomb for a <color=#C8102E>Sweep</color> - Golden Gwang!"),
+            "짝을 맞추면 두 장이 잠깐 <color=#C8102E>포개져</color> 있어요.\n(둘레의 금빛 고리가 줄어드는 동안)\n\n그 사이에 <color=#C8102E>같은 달 패를 하나 더</color> 누르면\n세 장이 뭉쳐 \"쌌다!\" — <color=#C8102E>뻑</color> 폭탄이 돼요. (최대 3개)\n\n폭탄 달의 빛나는 패를 하나 누르면 그 패와\n둘레의 짝 여러 쌍이 한꺼번에 <color=#C8102E>펑!</color> 터져요.\n\n폭탄 달 패만 남으면 저절로 펑! 펑!\n뻑 폭탄 셋으로 판을 비우면 <color=#C8102E>싹쓸이</color> → 황금 광!",
+            "After a pair, the two cards <color=#C8102E>stay stacked</color> briefly\n(while the gold ring runs down).\n\nTap <color=#C8102E>one more card of that month</color> in time and\nthe three clump up - a <color=#C8102E>Ppeok</color> bomb (max 3).\n\nTap a glowing card of a bomb month: it and\nseveral nearby pairs go <color=#C8102E>BOOM</color> at once!\n\nIf only bomb cards are left, they blow up on their own.\nClear the board with three bombs for a <color=#C8102E>Sweep</color> - Golden Gwang!"),
             38, Art.GreyDark, 700f, 640f);
         p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 1210f, () => p.Close(), 0f, 0f, 140f);
     }

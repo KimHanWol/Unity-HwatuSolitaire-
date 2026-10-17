@@ -9,7 +9,7 @@
 | select | 패 고르기 | Kenney card-slide 앞부분 |
 | shuffle | 섞기, 판 깔기 | Kenney card-shuffle |
 
-나머지는 코드 합성(Sfx.cs): 광이 찍힐 때 "칭~ 띠링"(BuildSparkle), 싹쓸이 황금 광(BuildGolden), 덮인 패 누름 "톡"(BuildBlocked), 폭탄, 클리어, 배경음 등.
+나머지는 코드 합성(Sfx.cs): 폭탄 마무리 직전 도화선 "치지지직"(BuildFuse), 광이 찍힐 때 "칭~ 띠링"(BuildSparkle), 싹쓸이 황금 광(BuildGolden), 덮인 패 누름 "톡"(BuildBlocked), 폭탄, 클리어, 배경음 등.
 
 ## 재료 (모두 CC0)
 - 뺨 치는 소리: Freesound — 232928 bmusic92 "Smacking Face", 539163 khenshom "Slap hit on the face or shoulder".

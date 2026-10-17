@@ -666,7 +666,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         if (selected != null) { selected.Selected = false; selected = null; }
         FinishPending();
         Fx.Stamp(Loc.T("폭탄 마무리!", "BOMB FINISH!"), Loc.T("남은 패를 한 번에 펑!", "Blasting everything left!"), Art.Gold, Art.RedDark);
-        Sfx.Stack();
+        Sfx.Fuse();
         var months = new List<int>(bombs);
         for (int k = 0; k < months.Count; k++)
         {

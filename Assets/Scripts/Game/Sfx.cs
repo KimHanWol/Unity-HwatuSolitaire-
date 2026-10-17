@@ -24,6 +24,7 @@ public class Sfx : MonoBehaviour
     AudioClip stackSlap;
     AudioClip golden;
     AudioClip blocked;
+    AudioClip fuse;
     AudioClip select, deny, stack, bomb, shuffle, clear, fail, click, tick, slide, revive;
     float lastSnap;
 
@@ -31,6 +32,8 @@ public class Sfx : MonoBehaviour
     public static void Deny() => Play(i => i.deny, 0.5f);
     /// <summary>덮인 패를 눌렀을 때: 요란하지 않게, 손끝으로 패를 살짝 건드린 듯한 작고 짧은 "톡".</summary>
     public static void Blocked() => Play(i => i.blocked, 0.35f);
+    /// <summary>폭탄 마무리 직전: 도화선이 타들어 가는 "치지지직".</summary>
+    public static void Fuse() => Play(i => i.fuse, 0.8f);
     /// <summary>쌌다: 박수 짝·짝·짝! 녹음(Resources/Audio/stack_slap)만 울린다. 녹음이 없을 때만 코드로 만든 북·징.</summary>
     public static void Stack()
     {
@@ -122,6 +125,7 @@ public class Sfx : MonoBehaviour
         select = Load("select", BuildSelect);
         deny = Load("deny", BuildDeny);
         blocked = Load("blocked", BuildBlocked);
+        fuse = Load("fuse", BuildFuse);
         stack = Load("stack", BuildStack);
         stackSlap = Resources.Load<AudioClip>("Audio/stack_slap");
         golden = Load("golden", BuildGolden);
@@ -292,6 +296,33 @@ public class Sfx : MonoBehaviour
             b[i] = Mathf.Sin(2f * Mathf.PI * 1650f * t) * Mathf.Exp(-t / 0.014f) * 0.7f + Noise() * Mathf.Exp(-t / 0.003f) * 0.4f;
         }
         return ToClip("select", Normalize(b, 0.6f));
+    }
+
+    /// <summary>
+    /// 도화선 "치지지직": 걸러진 잡음이 점점 높아지며 타들어 가고, 불똥 튀는 짧은 딱딱 소리가 섞인다. 끝으로 갈수록 커진다.
+    /// </summary>
+    AudioClip BuildFuse()
+    {
+        float seconds = 0.75f;
+        var b = new float[(int)(seconds * Rate)];
+        float lp = 0f, bp = 0f;
+        for (int i = 0; i < b.Length; i++)
+        {
+            float t = i / (float)Rate;
+            float k = t / seconds;
+            // 2kHz → 5kHz 로 올라가는 띠 잡음 (상태 변수 필터)
+            float f = 2f * Mathf.Sin(Mathf.PI * Mathf.Lerp(2000f, 5000f, k) / Rate);
+            float n = Noise();
+            lp += f * bp;
+            float hp = n - lp - 0.7f * bp;
+            bp += f * hp;
+            float hiss = bp * (0.35f + 0.65f * k) * (0.75f + 0.25f * Mathf.Sin(t * 90f));
+            // 불똥: 드문드문 아주 짧은 딱
+            float spark = Noise() > 0.985f ? Noise() * 1.2f : 0f;
+            float fade = Mathf.Min(1f, t / 0.03f) * Mathf.Min(1f, (seconds - t) / 0.05f);
+            b[i] = (hiss + spark * (0.4f + 0.6f * k)) * fade;
+        }
+        return ToClip("fuse", Normalize(b, 0.7f));
     }
 
     AudioClip BuildBlocked()

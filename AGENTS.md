@@ -51,6 +51,6 @@ Unity -batchmode -quit -projectPath . -buildTarget Android -executeMethod Projec
 
 ## 남은 일
 - [ ] AdMob 앱/광고 단위 만들고 `AdConfig.json` 채우기, `useTestAds: false`
-- [ ] 앱 아이콘(`Assets/Icon/AppIcon.png`), 스토어 이미지, 개인정보처리방침
+- [x] 앱 아이콘(`Assets/Icon/AppIcon.png`), 스토어 이미지·문구(`StoreAssets/`), 개인정보처리방침(`docs/privacy`, GitHub Pages), 업로드 키(`Keystore/`, 커밋 안 함)
 - [ ] 실기기에서 별 시간 체감 조정 (지금은 모의 풀이 모형 기준)
 - [ ] 소리 체감 확인 (짝·쌌다·패·시간 초과·이어하기는 CC0 녹음 — Tools/Audio/README.md. 폭탄·클리어·버튼·째깍·도화선·광·배경음은 코드 합성)

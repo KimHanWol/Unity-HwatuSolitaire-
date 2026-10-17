@@ -106,6 +106,9 @@ function page(v, size, { scale = 1, bg = true, art = true, radius = 0 } = {}) {
 for (const [k, v] of Object.entries(variants)) {
   // 스토어용: 정사각형 (Play 가 모서리를 둥글게 잘라도 패가 모서리에 걸리지 않을 만큼만 키움)
   render(page(v, 512, { scale: 1.06 }), 'icon_' + k + '.png', 512, false);
+  // Play 스토어 아이콘은 32비트 PNG(알파 포함)여야 한다 → RGBA 로 다시 저장
+  execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-i', path.resolve(OUT, 'icon_' + k + '.png'), '-pix_fmt', 'rgba', path.resolve(OUT, 'icon_' + k + '_rgba.png')]);
+  fs.renameSync(path.resolve(OUT, 'icon_' + k + '_rgba.png'), path.resolve(OUT, 'icon_' + k + '.png'));
   // 미리 보기·레거시 런처용: 둥근 모서리 정사각형(앱 아이콘 모양)과 원형
   render(page(v, 512, { radius: 22, scale: 1.06 }), 'icon_' + k + '_rounded.png', 512, true);
   render(page(v, 512, { radius: 50, scale: 0.92 }), 'icon_' + k + '_round.png', 512, true);

@@ -7,6 +7,7 @@ using System.Collections;
 using UnityEngine;
 #if ADS_ON
 using GoogleMobileAds.Api;
+using GoogleMobileAds.Ump.Api;
 #endif
 
 /// <summary>
@@ -204,6 +205,27 @@ public class Ads : MonoBehaviour
             if (!string.IsNullOrWhiteSpace(id)) devices.Add(id.Trim());
         if (devices.Count > 0) MobileAds.SetRequestConfiguration(new RequestConfiguration { TestDeviceIds = devices });
 
+        // 광고 동의(UMP): 유럽(EEA)·영국·스위스 등 동의가 필요한 곳에서는 첫 실행 때 Google 동의 창이 뜨고,
+        // 그 밖의 지역에서는 아무것도 뜨지 않는다. 동의 창 문구는 AdMob 콘솔 "개인정보 보호 및 메시지"에서 만든다.
+        ConsentInformation.Update(new ConsentRequestParameters(), updateError => OnMain(() =>
+        {
+            if (updateError != null) Debug.LogWarning("[Ads] 동의 정보를 받지 못했습니다: " + updateError.Message);
+            ConsentForm.LoadAndShowConsentFormIfRequired(formError => OnMain(() =>
+            {
+                if (formError != null) Debug.LogWarning("[Ads] 동의 창을 띄우지 못했습니다: " + formError.Message);
+                if (ConsentInformation.CanRequestAds()) StartSdk();
+            }));
+        }));
+        // 지난번에 이미 동의를 받았으면 새 정보를 기다리지 않고 바로 시작한다.
+        if (ConsentInformation.CanRequestAds()) StartSdk();
+    }
+
+    bool sdkStarted;
+
+    void StartSdk()
+    {
+        if (sdkStarted) return;
+        sdkStarted = true;
         MobileAds.Initialize(status => OnMain(() =>
         {
             LoadRewarded(Reward.TimeCharge);
@@ -212,6 +234,24 @@ public class Ads : MonoBehaviour
             LoadBanner();
         }));
     }
+
+    /// <summary>설정 창에 "광고 개인정보 설정" 버튼을 둬야 하는지 (동의가 필요한 지역에서만 true).</summary>
+    public static bool PrivacyOptionsRequired =>
+        ConsentInformation.PrivacyOptionsRequirementStatus == PrivacyOptionsRequirementStatus.Required;
+
+    /// <summary>광고 동의를 다시 고르는 Google 창을 연다.</summary>
+    public static void ShowPrivacyOptions()
+    {
+        ConsentForm.ShowPrivacyOptionsForm(error =>
+        {
+            if (error != null) Debug.LogWarning("[Ads] 개인정보 설정 창을 띄우지 못했습니다: " + error.Message);
+        });
+    }
+#else
+    public static bool PrivacyOptionsRequired => false;
+    public static void ShowPrivacyOptions() { }
+#endif
+#if ADS_ON
 
     BannerView banner;
 

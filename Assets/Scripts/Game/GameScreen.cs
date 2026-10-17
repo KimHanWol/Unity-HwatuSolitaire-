@@ -95,6 +95,13 @@ public class GameScreen : MonoBehaviour, IBackHandler
     public RectTransform TileRect(int tile) => views != null && tile >= 0 && tile < views.Length && views[tile] != null ? views[tile].Rt : null;
     public RectTransform TraySlot(int i) => traySlots[Mathf.Clamp(i, 0, traySlots.Length - 1)];
 
+    /// <summary>결과·시간 초과 창의 "다시 하기": 다음 스테이지와 같은 빈도 조건으로 가끔 전면 광고를 보여 준 뒤 다시 시작.</summary>
+    void RetryWithAd()
+    {
+        if (tutorial == null && Ads.TryShowInterstitial(def.number, RestartStage)) return;
+        RestartStage();
+    }
+
     void RestartStage()
     {
         if (tutorial != null) App.I.PlayTutorial();
@@ -977,7 +984,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
             }, 0f, 0f, 150f);
             y += 200f;
         }
-        p.Button(Loc.T("다시 하기", "Retry"), Art.IconRetry, Art.Red, Art.RedDark, y + 80f, RestartStage);
+        p.Button(Loc.T("다시 하기", "Retry"), Art.IconRetry, Art.Red, Art.RedDark, y + 80f, RetryWithAd);
         p.Button(Loc.T("스테이지 목록", "Stage List"), Art.IconGrid, Art.Wood, Art.WoodDark, y + 230f, () => App.I.ShowStages(def.number));
     }
 
@@ -1121,7 +1128,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
             y += 190f;
         }
         float half = (900f - 140f - 30f) / 2f;
-        p.Button(Loc.T("다시", "Retry"), Art.IconRetry, Art.Red, Art.RedDark, y + 65f, () => App.I.Play(def.number), half, -(half + 30f) / 2f);
+        p.Button(Loc.T("다시 하기", "Retry"), Art.IconRetry, Art.Red, Art.RedDark, y + 65f, RetryWithAd, half, -(half + 30f) / 2f);
         p.Button(Loc.T("목록", "Stages"), Art.IconGrid, Art.Wood, Art.WoodDark, y + 65f, () => App.I.ShowStages(def.number), half, (half + 30f) / 2f);
     }
 

@@ -301,23 +301,64 @@ public class TutorialDirector : MonoBehaviour
     {
         Hide();
         Done = true;
-        Anim.Delay(this, 1.3f, () =>
+        Anim.Delay(this, 1.3f, () => AskMonthNumbers(ShowEnd));
+    }
+
+    /// <summary>
+    /// 패 귀퉁이에 몇 월인지 숫자를 띄울지 묻는다. 화투가 낯설면 켜고(같은 달 찾기가 쉬워진다), 잘 알면 끈다.
+    /// 나중에 설정·일시정지 창의 "월 숫자 표시"로 언제든 바꿀 수 있다.
+    /// </summary>
+    void AskMonthNumbers(Action then)
+    {
+        var p = Popup.Open(new Vector2(880f, 1000f), Loc.T("월 숫자 표시", "Month numbers"));
+        p.CanClose = false;
+        p.OnBackPressed = () => { };
+
+        // 예시: 숫자가 붙은 패 두 장 (같은 1월)
+        float w = 150f, h = w * Art.CardAspect;
+        for (int i = 0; i < 2; i++)
         {
-            var p = Popup.Open(new Vector2(880f, 900f), Loc.T("튜토리얼 끝!", "Tutorial done!"));
-            p.CanClose = false;
-            p.OnBackPressed = () => App.I.ShowTitle();
-            var coin = Ui.Image(p.Panel, Art.GwangGold, Color.white, "Coin");
-            Ui.Place(coin.rectTransform, 0.5f, 1f, new Vector2(200f, 200f), new Vector2(0f, -250f));
-            coin.rectTransform.localScale = Vector3.zero;
-            Anim.Run(coin, 0.45f, t => coin.rectTransform.localScale = Vector3.one * Anim.OutBack(t), () =>
-            {
-                Sfx.Golden();
-                Fx.Burst(coin.rectTransform.position, 30, Fx.FireColors, 900f, Art.Star, 0.9f, 34f, -800f);
-            }, 0.2f);
-            p.Label(Loc.T("모든 패를 시간 안에 없애면 <color=#C8102E>클리어!</color>\n뻑 폭탄 3개로 마무리하면 <color=#B7831C>황금 광</color>을 얻어요.",
-                          "Clear all cards in time to <color=#C8102E>win!</color>\nFinish with three Ppeok bombs for a <color=#B7831C>Golden Gwang</color>."), 42, Art.Ink, 470f, 140f);
-            p.Button(Loc.T("1탄 시작", "Start Stage 1"), Art.IconPlay, Art.Green, Art.GreenDark, 650f, () => App.I.Play(1), 0f, 0f, 150f);
-            p.Button(Loc.T("처음 화면", "Title"), null, Art.Wood, Art.WoodDark, 800f, () => App.I.ShowTitle(), 0f, 0f, 110f);
-        });
+            var card = Ui.Image(p.Panel, Art.Card(i == 0 ? 0 : 3), Color.white, "Card" + i);
+            Ui.Place(card.rectTransform, 0.5f, 1f, new Vector2(w, h), new Vector2((i - 0.5f) * 190f, -(160f + h / 2f)));
+            var badge = Ui.Image(card.rectTransform, Art.Circle128, Art.Ink, "Badge");
+            badge.rectTransform.anchorMin = badge.rectTransform.anchorMax = new Vector2(0f, 1f);
+            badge.rectTransform.sizeDelta = new Vector2(60f, 60f);
+            badge.rectTransform.anchoredPosition = new Vector2(12f, -12f);
+            var ring = Ui.Image(badge.rectTransform, Art.Ring, Art.Gold, "Ring");
+            Ui.Stretch(ring.rectTransform);
+            var n = Ui.Text(badge.rectTransform, "1", 36, Color.white, TextAnchor.MiddleCenter, "N");
+            Ui.Stretch(n.rectTransform);
+        }
+
+        p.Label(Loc.T("패 귀퉁이에 몇 월인지 숫자를 보여 줄까요?\n화투가 낯설면 켜 두는 게 편해요.\n(설정에서 언제든 바꿀 수 있어요)",
+                      "Show the month number on each card?\nHandy if Korean flower cards are new to you.\n(You can change this anytime in Settings)"), 38, Art.Ink, 560f, 170f);
+
+        void Choose(bool on)
+        {
+            Settings.ShowMonth = on;
+            p.Close();
+            then?.Invoke();
+        }
+        p.Button(Loc.T("숫자 보기 (화투가 낯설어요)", "Show numbers (new to Hwatu)"), null, Art.Green, Art.GreenDark, 730f, () => Choose(true), 0f, 0f, 120f);
+        p.Button(Loc.T("숫자 끄기 (화투를 알아요)", "Hide numbers (I know Hwatu)"), null, Art.Wood, Art.WoodDark, 880f, () => Choose(false), 0f, 0f, 120f);
+    }
+
+    void ShowEnd()
+    {
+        var p = Popup.Open(new Vector2(880f, 900f), Loc.T("튜토리얼 끝!", "Tutorial done!"));
+        p.CanClose = false;
+        p.OnBackPressed = () => App.I.ShowTitle();
+        var coin = Ui.Image(p.Panel, Art.GwangGold, Color.white, "Coin");
+        Ui.Place(coin.rectTransform, 0.5f, 1f, new Vector2(200f, 200f), new Vector2(0f, -250f));
+        coin.rectTransform.localScale = Vector3.zero;
+        Anim.Run(coin, 0.45f, t => coin.rectTransform.localScale = Vector3.one * Anim.OutBack(t), () =>
+        {
+            Sfx.Golden();
+            Fx.Burst(coin.rectTransform.position, 30, Fx.FireColors, 900f, Art.Star, 0.9f, 34f, -800f);
+        }, 0.2f);
+        p.Label(Loc.T("모든 패를 시간 안에 없애면 <color=#C8102E>클리어!</color>\n뻑 폭탄 3개로 마무리하면 <color=#B7831C>황금 광</color>을 얻어요.",
+                      "Clear all cards in time to <color=#C8102E>win!</color>\nFinish with three Ppeok bombs for a <color=#B7831C>Golden Gwang</color>."), 42, Art.Ink, 470f, 140f);
+        p.Button(Loc.T("1탄 시작", "Start Stage 1"), Art.IconPlay, Art.Green, Art.GreenDark, 650f, () => App.I.Play(1), 0f, 0f, 150f);
+        p.Button(Loc.T("처음 화면", "Title"), null, Art.Wood, Art.WoodDark, 800f, () => App.I.ShowTitle(), 0f, 0f, 110f);
     }
 }

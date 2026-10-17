@@ -83,13 +83,13 @@ function page(v, size, { scale = 1, bg = true, art = true, radius = 0 } = {}) {
   <body><div class="shape">${inner}</div></body></html>`;
 }
 for (const [k, v] of Object.entries(variants)) {
-  // 스토어용: 정사각형 (Play 가 모서리를 둥글게 자르므로 그림은 86%로 줄여 잘리지 않게)
-  render(page(v, 512, { scale: 0.86 }), 'icon_' + k + '.png', 512, false);
+  // 스토어용: 정사각형 (Play 가 모서리를 둥글게 잘라도 패가 모서리에 걸리지 않을 만큼만 키움)
+  render(page(v, 512, { scale: 1.06 }), 'icon_' + k + '.png', 512, false);
   // 미리 보기·레거시 런처용: 둥근 모서리 정사각형(앱 아이콘 모양)과 원형
-  render(page(v, 512, { radius: 22, scale: 0.86 }), 'icon_' + k + '_rounded.png', 512, true);
-  render(page(v, 512, { radius: 50, scale: 0.78 }), 'icon_' + k + '_round.png', 512, true);
+  render(page(v, 512, { radius: 22, scale: 1.06 }), 'icon_' + k + '_rounded.png', 512, true);
+  render(page(v, 512, { radius: 50, scale: 0.92 }), 'icon_' + k + '_round.png', 512, true);
   // 안드로이드 적응형 아이콘 레이어(432): 배경(그라데이션)과 전경(그림, 가운데 안전 영역 66% 안에 들게 줄임)
   render(page(v, 432, { art: false }), 'icon_' + k + '_adaptive_bg.png', 432, false);
-  render(page(v, 432, { bg: false, scale: 0.66 }), 'icon_' + k + '_adaptive_fg.png', 432, true);
+  render(page(v, 432, { bg: false, scale: 0.68 }), 'icon_' + k + '_adaptive_fg.png', 432, true);
 }
 console.log('ok');

@@ -77,6 +77,27 @@ public class GameScreen : MonoBehaviour, IBackHandler
     bool Paused => !running || App.I.PopupOpen || Ads.Showing;
     float Limit => def.timeLimit + bonusTime;
 
+    // 튜토리얼 중이면 진행을 맡는 쪽 (아니면 null)
+    TutorialDirector tutorial;
+    const float TutorialPanelHeight = 230f;
+
+    /// <summary>튜토리얼 판으로 시작한다.</summary>
+    public void BeginTutorial()
+    {
+        tutorial = gameObject.AddComponent<TutorialDirector>();
+        Begin(TutorialDirector.Stage());
+    }
+
+    /// <summary>튜토리얼이 손가락으로 짚을 자리.</summary>
+    public RectTransform TileRect(int tile) => views != null && tile >= 0 && tile < views.Length && views[tile] != null ? views[tile].Rt : null;
+    public RectTransform TraySlot(int i) => traySlots[Mathf.Clamp(i, 0, traySlots.Length - 1)];
+
+    void RestartStage()
+    {
+        if (tutorial != null) App.I.PlayTutorial();
+        else App.I.Play(def.number);
+    }
+
     /// <summary>bonusSeconds: 미리 받은 추가 시간. 시계가 그만큼 거꾸로(-) 시작해서 제한 시간과 광 기준 모두에 여유가 생긴다.</summary>
     public void Begin(StageDef stage, int bonusSeconds = 0)
     {
@@ -86,14 +107,29 @@ public class GameScreen : MonoBehaviour, IBackHandler
         board = def.CreateBoard();
         rng = new Rng(def.number * 31 + System.Environment.TickCount);
         BuildHud();
+        if (tutorial != null) SetupTutorialHud();
         BuildBoard();
         App.I.LayoutChanged += Relayout;
         running = true;
         RefreshTray();
         RefreshTimer();
-        ShowTipIfNeeded();
+        if (tutorial != null) Anim.Delay(this, 1.0f, tutorial.StartLesson);
+        else ShowTipIfNeeded();
         if (bonus > 0)
             Anim.Delay(this, 0.8f, () => Fx.PopText(timeText.rectTransform.position, "+" + bonus + Loc.T("초", "s"), 80, Color.white, Art.BlueDark, 120f, 1.4f));
+    }
+
+    /// <summary>튜토리얼: 시간 막대·광 표시를 숨기고, 그 자리와 판 위쪽에 안내 띠를 둔다.</summary>
+    void SetupTutorialHud()
+    {
+        var rt = (RectTransform)transform;
+        var timer = rt.Find("Timer");
+        if (timer != null) timer.gameObject.SetActive(false);
+        foreach (var s in hudStars) s.gameObject.SetActive(false);
+        stageText.text = Loc.T("튜토리얼", "Tutorial");
+        chapterText.text = Loc.T("화투 사천성 배우기", "Learn to play");
+        boardArea.offsetMax = new Vector2(-20f, -(TopBar + TutorialPanelHeight + 20f));
+        tutorial.Init(this, rt, TopBar + 10f, TutorialPanelHeight);
     }
 
     void OnDestroy()
@@ -329,6 +365,11 @@ public class GameScreen : MonoBehaviour, IBackHandler
         int i = view.Index;
         if (views[i] != view) return;
         int month = Board.Month(view.Value);
+        if (tutorial != null && !tutorial.Allow(i))
+        {
+            tutorial.Nudge();
+            return;
+        }
 
         // 폭탄 달의 열린 패를 누르면 터진다.
         if (bombs.Contains(month) && board.Free(i))
@@ -382,6 +423,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         view.Selected = true;
         Sfx.Select();
         Settings.Haptic(8, 40);
+        tutorial?.OnSelected(view.Index);
     }
 
     // ------------------------------------------------------------ 짝
@@ -438,6 +480,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         });
 
         AfterRemoval(fly + 0.3f);
+        tutorial?.OnMatched(month);
     }
 
     static void NoHit(CardView v)
@@ -476,7 +519,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
     void UpdatePending(float dt)
     {
         if (pending == null) return;
-        pending.left -= dt;
+        if (tutorial == null) pending.left -= dt;
         if (pending.ring != null)
         {
             float k = Mathf.Clamp01(pending.left / def.stackWindow);
@@ -563,6 +606,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
 
         RefreshBombMarks();
         AfterRemoval(fly + 0.3f);
+        tutorial?.OnStacked(p.month);
     }
 
     void Vanish(CardView v, float duration)
@@ -852,7 +896,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
     void Update()
     {
         if (def == null) return;
-        if (!Paused && !finished)
+        if (!Paused && !finished && tutorial == null)
         {
             elapsed += Mathf.Min(Time.unscaledDeltaTime, 0.1f);
             if (elapsed >= Limit) TimeUp();
@@ -924,7 +968,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
             }, 0f, 0f, 150f);
             y += 200f;
         }
-        p.Button(Loc.T("다시 하기", "Retry"), Art.IconRetry, Art.Red, Art.RedDark, y + 80f, () => App.I.Play(def.number));
+        p.Button(Loc.T("다시 하기", "Retry"), Art.IconRetry, Art.Red, Art.RedDark, y + 80f, RestartStage);
         p.Button(Loc.T("스테이지 목록", "Stage List"), Art.IconGrid, Art.Wood, Art.WoodDark, y + 230f, () => App.I.ShowStages(def.number));
     }
 
@@ -943,6 +987,14 @@ public class GameScreen : MonoBehaviour, IBackHandler
     // ------------------------------------------------------------ 클리어
     void Win()
     {
+        if (tutorial != null)
+        {
+            Sfx.Clear();
+            Fx.Confetti(120);
+            Fx.Stamp(Loc.T("싹쓸이!", "SWEEP!"), Loc.T("폭탄 셋으로 판을 싹 비웠어요!", "Three bombs cleared the board!"), Art.Gold, Art.RedDark, -6f);
+            tutorial.Finish();
+            return;
+        }
         // 추가 시간을 받았으면 그만큼 빼고 잰다 (시계가 -bonus 에서 시작했으므로 elapsed 그대로).
         int seconds = Mathf.Max(1, Mathf.CeilToInt(elapsed));
         int stars = revives > 0 ? 1 : def.StarsFor(elapsed);
@@ -1078,7 +1130,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         if (selected != null) { selected.Selected = false; selected = null; }
         var p = Popup.Open(new Vector2(880f, 1280f), Loc.T("일시정지", "Paused"), true);
         p.Button(Loc.T("계속하기", "Resume"), Art.IconPlay, Art.Green, Art.GreenDark, 190f, () => p.Close(), 0f, 0f, 140f);
-        p.Button(Loc.T("다시 하기", "Restart"), Art.IconRetry, Art.Red, Art.RedDark, 350f, () => App.I.Play(def.number), 0f, 0f, 140f);
+        p.Button(Loc.T("다시 하기", "Restart"), Art.IconRetry, Art.Red, Art.RedDark, 350f, RestartStage, 0f, 0f, 140f);
         p.Button(Loc.T("스테이지 목록", "Stage List"), Art.IconGrid, Art.Wood, Art.WoodDark, 510f, () => App.I.ShowStages(def.number), 0f, 0f, 140f);
         p.Toggle(Loc.T("효과음", "Sound"), 660f, () => Settings.SoundOn, v => Settings.SoundOn = v);
         p.Toggle(Loc.T("배경음", "Music"), 780f, () => Settings.MusicOn, v => { Settings.MusicOn = v; Sfx.RefreshMusic(); });
@@ -1106,6 +1158,8 @@ public class GameScreen : MonoBehaviour, IBackHandler
 
     void ShowTipIfNeeded()
     {
+        // 튜토리얼을 했으면 같은 내용의 안내 창은 띄우지 않는다.
+        if (TutorialDirector.Done) return;
         if (def.number == 1) Tips.ShowOnce("rules", Tips.ShowRules);
         else if (def.number == 2) Tips.ShowOnce("stack", Tips.ShowCombo);
     }

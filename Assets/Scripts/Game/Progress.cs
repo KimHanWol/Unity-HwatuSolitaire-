@@ -134,6 +134,18 @@ public static class Progress
         PlayerPrefs.Save();
     }
 
+    /// <summary>
+    /// 개발용 초기화: 광·기록·황금 광·마지막 스테이지·튜토리얼·처음 안내를 모두 지워 처음 실행한 상태로.
+    /// 소리·진동·언어 같은 설정은 남긴다.
+    /// </summary>
+    public static void ResetEverything()
+    {
+        ResetAll();
+        TutorialDirector.Done = false;
+        foreach (string tip in new[] { "rules", "stack", "combo", "gravity", "blocks", "layers" }) PlayerPrefs.DeleteKey("Tip_" + tip);
+        PlayerPrefs.Save();
+    }
+
     public static void ResetAll()
     {
         PlayerPrefs.DeleteKey(StarsKey);

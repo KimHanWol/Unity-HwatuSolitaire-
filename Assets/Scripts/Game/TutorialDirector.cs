@@ -1,0 +1,278 @@
+using System;
+using HwatuSolitaire.Core;
+using UnityEngine;
+using UnityEngine.UI;
+
+/// <summary>
+/// 튜토리얼: 정해진 작은 판(2층 14장)에서 손가락으로 짚어 주며 차례로 해 본다.
+///  ① 짝: 같은 달 두 장 (위층 2월 매조) — 덮인 패는 어둡게 보인다는 것도 함께
+///  ② 쌌다(뻑): 1월 두 장으로 짝 → 포개진 동안 셋째 패 → 뻑 폭탄 (튜토리얼에서는 고리 시간이 멈춰 있다)
+///  ③ 같은 걸 8월·12월로 두 번 더 → 뻑 폭탄 셋
+///  ④ 판에 폭탄 달 패만 남으면 폭탄 마무리 → 싹쓸이 → 황금 광
+/// 짚은 패 말고는 누를 수 없다. 끝나면 TutorialDirector.Done 이 켜지고 1탄으로 간다.
+/// </summary>
+public class TutorialDirector : MonoBehaviour
+{
+    const string DoneKey = "TutorialDone";
+
+    public static bool Done
+    {
+        get => PlayerPrefs.GetInt(DoneKey, 0) == 1;
+        set { PlayerPrefs.SetInt(DoneKey, value ? 1 : 0); PlayerPrefs.Save(); }
+    }
+
+    // ------------------------------------------------------------ 판 (자리 번호)
+    // 위층: X1(1,1) X2(5,1) — 아래층 위쪽 두 줄 여덟 장을 덮는다.
+    // 아래층 세 줄 (x = 0,2,4,6):
+    //   y=0: A4 B2 B3 C4
+    //   y=2: C1 C2 C3 B4
+    //   y=4: A1 A2 A3 B1   ← 처음부터 열려 있는 줄
+    const int X1 = 0, X2 = 1, A4 = 2, B2 = 3, B3 = 4, C4 = 5, C1 = 6, C2 = 7, C3 = 8, B4 = 9, A1 = 10, A2 = 11, A3 = 12, B1 = 13;
+    const int MonthX = 1, MonthA = 0, MonthB = 7, MonthC = 11; // 2월 매조, 1월 송학, 8월 공산, 12월 비
+
+    public static StageDef Stage()
+    {
+        int[] tiles =
+        {
+            1, 1, 1,  5, 1, 1,
+            0, 0, 0,  2, 0, 0,  4, 0, 0,  6, 0, 0,
+            0, 2, 0,  2, 2, 0,  4, 2, 0,  6, 2, 0,
+            0, 4, 0,  2, 4, 0,  4, 4, 0,  6, 4, 0,
+        };
+        var cells = new int[14];
+        cells[X1] = MonthX * 4 + 0; cells[X2] = MonthX * 4 + 2;
+        cells[A1] = MonthA * 4 + 0; cells[A2] = MonthA * 4 + 2; cells[A3] = MonthA * 4 + 3; cells[A4] = MonthA * 4 + 1;
+        cells[B1] = MonthB * 4 + 0; cells[B2] = MonthB * 4 + 1; cells[B3] = MonthB * 4 + 2; cells[B4] = MonthB * 4 + 3;
+        cells[C1] = MonthC * 4 + 0; cells[C2] = MonthC * 4 + 1; cells[C3] = MonthC * 4 + 2; cells[C4] = MonthC * 4 + 3;
+        return new StageDef
+        {
+            number = 0,
+            shape = "tutorial",
+            tiles = tiles,
+            cells = cells,
+            stackWindow = 2f,
+            star3 = 9999, star2 = 9999, timeLimit = 9999,
+        };
+    }
+
+    // ------------------------------------------------------------ 진행
+    GameScreen game;
+    RectTransform panel, pointer, arrow;
+    Text text;
+    Button next;
+    Image ring;
+    int step = -1;
+    int expect = -1;          // 지금 누를 수 있는 자리 (-1 이면 없음)
+    RectTransform target;     // 손가락이 가리키는 곳
+    float time;
+
+    /// <summary>판 위 안내 글 자리(가로 띠)와 손가락을 만든다. top: 화면 위에서부터의 위치.</summary>
+    public void Init(GameScreen screen, RectTransform root, float top, float height)
+    {
+        game = screen;
+        panel = Ui.Rect("TutorialPanel", root);
+        panel.anchorMin = new Vector2(0f, 1f);
+        panel.anchorMax = new Vector2(1f, 1f);
+        panel.pivot = new Vector2(0.5f, 1f);
+        panel.offsetMin = new Vector2(30f, -(top + height));
+        panel.offsetMax = new Vector2(-30f, -top);
+        var bg = Ui.Image(panel, Art.Round, Art.Paper, "Bg");
+        Ui.Stretch(bg.rectTransform);
+        var edge = Ui.Image(panel, Art.RoundOutline, Art.GoldDark, "Edge");
+        Ui.Stretch(edge.rectTransform, 6f);
+        text = Ui.Text(panel, "", 40, Art.Ink, TextAnchor.MiddleLeft, "Text");
+        Ui.Stretch(text.rectTransform);
+        text.rectTransform.offsetMin = new Vector2(40f, 10f);
+        text.rectTransform.offsetMax = new Vector2(-40f, -10f);
+        next = Ui.Button(panel, new Vector2(200f, 96f), Art.Green, Art.GreenDark, Loc.T("다음", "Next"), null, Next, 42, "Next");
+        Ui.Place((RectTransform)next.transform, 1f, 0f, new Vector2(200f, 96f), new Vector2(-130f, 62f));
+        next.gameObject.SetActive(false);
+
+        pointer = Ui.Rect("Pointer", root);
+        pointer.sizeDelta = new Vector2(10f, 10f);
+        ring = Ui.Image(pointer, Art.Ring, Art.Gold, "Ring");
+        Ui.Place(ring.rectTransform, 0.5f, 0.5f, new Vector2(200f, 200f));
+        var arrowImg = Ui.Image(pointer, Art.IconBack, Art.Gold, "Arrow");
+        arrow = arrowImg.rectTransform;
+        Ui.Place(arrow, 0.5f, 0.5f, new Vector2(90f, 90f), new Vector2(0f, 170f));
+        arrow.localEulerAngles = new Vector3(0f, 0f, 90f); // 아래를 가리킨다
+        pointer.gameObject.SetActive(false);
+    }
+
+    public void StartLesson() => Go(0);
+
+    /// <summary>지금 이 자리를 눌러도 되는지 (짚은 패만).</summary>
+    public bool Allow(int tile) => tile == expect;
+
+    /// <summary>다른 패를 눌렀을 때: 손가락을 한 번 들썩여 알려 준다.</summary>
+    public void Nudge()
+    {
+        Sfx.Blocked();
+        if (pointer.gameObject.activeSelf) Anim.Pop(pointer, 0.35f, 0.35f);
+    }
+
+    public void OnSelected(int tile)
+    {
+        if (step == 0 && tile == X1) Go(1);
+        else if (step == 3 && tile == A1) Go(4);
+        else if (step == 7 && tile == B1) Go(8);
+        else if (step == 10 && tile == C1) Go(11);
+    }
+
+    public void OnMatched(int month)
+    {
+        if (step == 1 && month == MonthX) Later(0.6f, 2);
+        else if (step == 4 && month == MonthA) Go(5);
+        else if (step == 8 && month == MonthB) Go(9);
+        else if (step == 11 && month == MonthC) Go(12);
+    }
+
+    public void OnStacked(int month)
+    {
+        if (step == 5 && month == MonthA) Later(1.4f, 6);
+        else if (step == 9 && month == MonthB) Later(1.4f, 10);
+        else if (step == 12 && month == MonthC) Go(13);
+    }
+
+    void Later(float seconds, int nextStep)
+    {
+        Hide();
+        Anim.Delay(this, seconds, () => Go(nextStep));
+    }
+
+    void Next()
+    {
+        if (step == 2) Go(3);
+        else if (step == 6) Go(7);
+    }
+
+    void Hide()
+    {
+        expect = -1;
+        target = null;
+        pointer.gameObject.SetActive(false);
+        next.gameObject.SetActive(false);
+    }
+
+    void Go(int s)
+    {
+        step = s;
+        Hide();
+        switch (s)
+        {
+            case 0:
+                Say(Loc.T("화투 사천성에 온 걸 환영해요!\n같은 달(같은 꽃) 패 두 장을 차례로 누르면 <color=#C8102E>짝!</color> 하고 없어져요.",
+                          "Welcome! Tap two cards of the same month\n(same flower) to <color=#C8102E>snap</color> them away."));
+                Point(X1);
+                break;
+            case 1:
+                Say(Loc.T("좋아요! 같은 2월 매조 패를 하나 더 눌러요.", "Good! Now tap the other February card."));
+                Point(X2);
+                break;
+            case 2:
+                Say(Loc.T("어둡던 패들이 밝아졌죠?\n위에 다른 패가 <color=#C8102E>덮고 있으면</color> 고를 수 없어요. 위 패부터 치워요.",
+                          "See the dark cards light up?\nA card <color=#C8102E>covered</color> by another can't be picked."));
+                next.gameObject.SetActive(true);
+                break;
+            case 3:
+                Say(Loc.T("이번엔 <color=#C8102E>쌌다!</color>를 해 볼게요.\n1월 송학 두 장으로 먼저 짝!", "Now let's make a <color=#C8102E>Ppeok</color>!\nFirst, snap two January cards."));
+                Point(A1);
+                break;
+            case 4:
+                Say(Loc.T("같은 1월 패를 하나 더!", "One more January card!"));
+                Point(A2);
+                break;
+            case 5:
+                Say(Loc.T("짝 맞춘 두 장이 잠깐 포개져 있어요.\n금빛 고리가 줄기 전에 <color=#C8102E>같은 달 패를 하나 더</color> 누르면…",
+                          "The pair stays stacked for a moment.\nTap <color=#C8102E>one more card of that month</color> before the ring runs out..."));
+                Point(A3);
+                break;
+            case 6:
+                Say(Loc.T("<color=#C8102E>쌌다!</color> 세 장이 뭉쳐 <color=#C8102E>뻑 폭탄</color>이 됐어요.\n폭탄 달 패를 누르면 둘레 패까지 펑! 터지지만, 지금은 아껴 둬요.",
+                          "<color=#C8102E>Stacked!</color> Three cards made a <color=#C8102E>Ppeok bomb</color>.\nTapping that month blasts nearby pairs - but save it for now."));
+                PointAt(game.TraySlot(0));
+                next.gameObject.SetActive(true);
+                break;
+            case 7:
+                Say(Loc.T("8월 공산으로 한 번 더! 짝 → 셋째 패.", "Again with August: pair, then the third card."));
+                Point(B1);
+                break;
+            case 8:
+                Say(Loc.T("짝!", "Snap!"));
+                Point(B2);
+                break;
+            case 9:
+                Say(Loc.T("고리가 줄기 전에 셋째 패!", "The third card, before the ring runs out!"));
+                Point(B3);
+                break;
+            case 10:
+                Say(Loc.T("마지막! 12월 비로 한 번 더.", "Last one! December this time."));
+                Point(C1);
+                break;
+            case 11:
+                Say(Loc.T("짝!", "Snap!"));
+                Point(C2);
+                break;
+            case 12:
+                Say(Loc.T("셋째 패!", "The third card!"));
+                Point(C3);
+                break;
+            case 13:
+                Say(Loc.T("뻑 폭탄이 셋!\n판에 폭탄 달 패만 남으면 저절로 펑! 펑! 펑!\n폭탄 셋으로 판을 비우면 <color=#C8102E>싹쓸이</color> → 황금 광!",
+                          "Three bombs!\nWhen only bomb cards are left, they blow up on their own.\nClear the board with three bombs: <color=#C8102E>Sweep</color> - Golden Gwang!"));
+                break;
+        }
+    }
+
+    void Say(string message)
+    {
+        text.text = message;
+        Anim.Pop(panel, 0.04f, 0.25f);
+    }
+
+    void Point(int tile)
+    {
+        expect = tile;
+        PointAt(game.TileRect(tile));
+    }
+
+    void PointAt(RectTransform rt)
+    {
+        target = rt;
+        pointer.gameObject.SetActive(rt != null);
+    }
+
+    void LateUpdate()
+    {
+        if (pointer == null || target == null) return;
+        time += Time.unscaledDeltaTime;
+        pointer.position = target.position;
+        float size = Mathf.Max(target.rect.width, target.rect.height) * 1.15f;
+        ring.rectTransform.sizeDelta = Vector2.one * size * (1f + 0.08f * Mathf.Sin(time * 6f));
+        arrow.anchoredPosition = new Vector2(0f, size * 0.5f + 40f + 14f * Mathf.Sin(time * 6f));
+    }
+
+    /// <summary>튜토리얼 판을 다 비웠을 때 (싹쓸이): 끝났다고 알리고 1탄으로.</summary>
+    public void Finish()
+    {
+        Hide();
+        Done = true;
+        Anim.Delay(this, 1.3f, () =>
+        {
+            var p = Popup.Open(new Vector2(880f, 900f), Loc.T("튜토리얼 끝!", "Tutorial done!"));
+            p.CanClose = false;
+            p.OnBackPressed = () => App.I.ShowTitle();
+            var coin = Ui.Image(p.Panel, Art.GwangGold, Color.white, "Coin");
+            Ui.Place(coin.rectTransform, 0.5f, 1f, new Vector2(200f, 200f), new Vector2(0f, -250f));
+            coin.rectTransform.localScale = Vector3.zero;
+            Anim.Run(coin, 0.45f, t => coin.rectTransform.localScale = Vector3.one * Anim.OutBack(t), () =>
+            {
+                Sfx.Golden();
+                Fx.Burst(coin.rectTransform.position, 30, Fx.FireColors, 900f, Art.Star, 0.9f, 34f, -800f);
+            }, 0.2f);
+            p.Label(Loc.T("짝 → 쌌다(뻑) → 폭탄 → 싹쓸이!\n이제 진짜 판에서 해 볼까요?", "Snap → Ppeok → Bomb → Sweep!\nReady for the real thing?"), 44, Art.Ink, 470f, 140f);
+            p.Button(Loc.T("1탄 시작", "Start Stage 1"), Art.IconPlay, Art.Green, Art.GreenDark, 650f, () => App.I.Play(1), 0f, 0f, 150f);
+            p.Button(Loc.T("처음 화면", "Title"), null, Art.Wood, Art.WoodDark, 800f, () => App.I.ShowTitle(), 0f, 0f, 110f);
+        });
+    }
+}

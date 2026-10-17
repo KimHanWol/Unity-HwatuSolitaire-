@@ -55,7 +55,7 @@ public static class Tips
     /// <summary>설정 창 (타이틀에서). onLanguage: 언어를 바꿨을 때 화면을 다시 그리라고 알린다.</summary>
     public static void ShowSettings(Action onLanguage)
     {
-        var p = Popup.Open(new Vector2(880f, 1280f), Loc.T("설정", "Settings"), true);
+        var p = Popup.Open(new Vector2(880f, 1420f), Loc.T("설정", "Settings"), true);
         p.Toggle(Loc.T("효과음", "Sound"), 190f, () => Settings.SoundOn, v => Settings.SoundOn = v);
         p.Toggle(Loc.T("배경음", "Music"), 310f, () => Settings.MusicOn, v => { Settings.MusicOn = v; Sfx.RefreshMusic(); });
         p.Toggle(Loc.T("진동", "Vibration"), 430f, () => Settings.VibrationOn, v => Settings.VibrationOn = v);
@@ -66,9 +66,10 @@ public static class Tips
             p.Close(true);
             onLanguage?.Invoke();
         }, 0f, 0f, 120f);
-        p.Button(Loc.T("규칙 보기", "How to play"), null, Art.Wood, Art.WoodDark, 830f, () => { p.Close(); ShowRules(); }, 0f, 0f, 120f);
-        p.Button(Loc.T("만든 사람 · 저작권", "Credits"), null, Art.Wood, Art.WoodDark, 970f, () => { p.Close(); ShowCredits(); }, 0f, 0f, 120f);
-        p.Button(Loc.T("닫기", "Close"), Art.IconClose, Art.Red, Art.RedDark, 1130f, () => p.Close(), 0f, 0f, 130f);
+        p.Button(Loc.T("튜토리얼 다시 하기", "Replay tutorial"), Art.IconPlay, Art.Green, Art.GreenDark, 830f, () => { p.Close(true); App.I.PlayTutorial(); }, 0f, 0f, 120f);
+        p.Button(Loc.T("규칙 보기", "How to play"), null, Art.Wood, Art.WoodDark, 970f, () => { p.Close(); ShowRules(); }, 0f, 0f, 120f);
+        p.Button(Loc.T("만든 사람 · 저작권", "Credits"), null, Art.Wood, Art.WoodDark, 1110f, () => { p.Close(); ShowCredits(); }, 0f, 0f, 120f);
+        p.Button(Loc.T("닫기", "Close"), Art.IconClose, Art.Red, Art.RedDark, 1270f, () => p.Close(), 0f, 0f, 130f);
 #if DEVELOPMENT_BUILD || UNITY_EDITOR
         var dev = Ui.Button(p.Panel, new Vector2(220f, 70f), Art.Grey, Art.GreyDark, "DEV: unlock", null, () =>
         {
@@ -76,6 +77,14 @@ public static class Tips
             p.Close();
         }, 30);
         Ui.Place((RectTransform)dev.transform, 0f, 0f, new Vector2(220f, 70f), new Vector2(150f, -50f));
+        // 개발용 초기화: 진행·기록·황금 광·튜토리얼·처음 안내를 모두 지우고 처음 실행한 상태로 (설정·언어는 남긴다)
+        var reset = Ui.Button(p.Panel, new Vector2(220f, 70f), Art.Red, Art.RedDark, "DEV: 초기화", null, () =>
+        {
+            Progress.ResetEverything();
+            p.Close(true);
+            App.I.ShowTitle();
+        }, 30);
+        Ui.Place((RectTransform)reset.transform, 1f, 0f, new Vector2(220f, 70f), new Vector2(-150f, -50f));
 #endif
     }
 

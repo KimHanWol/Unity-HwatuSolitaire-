@@ -86,7 +86,11 @@ public class TitleScreen : MonoBehaviour, IBackHandler
         // 버튼
         int frontier = Progress.Frontier;
         string playLabel = Progress.TotalStars == 0 ? Loc.T("시작하기", "Play") : Loc.T("이어하기  ", "Continue  ") + frontier;
-        var play = Ui.Button(rt, new Vector2(640f, 170f), Art.Green, Art.GreenDark, playLabel, Art.IconPlay, () => App.I.Play(frontier), 66, "Play");
+        var play = Ui.Button(rt, new Vector2(640f, 170f), Art.Green, Art.GreenDark, playLabel, Art.IconPlay, () =>
+        {
+            if (!TutorialDirector.Done) App.I.PlayTutorial();
+            else App.I.Play(frontier);
+        }, 66, "Play");
         Ui.Place((RectTransform)play.transform, 0.5f, 0.2f, new Vector2(640f, 170f), new Vector2(0f, 40f));
         Anim.Run(play, 100000f, t =>
         {

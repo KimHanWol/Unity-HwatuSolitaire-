@@ -233,7 +233,13 @@ public class Ads : MonoBehaviour
 
         // 광고가 뜨기 전부터 자리를 비워 둬야 화면이 갑자기 밀리지 않는다.
         SetBannerHeight(size.Height * MobileAds.Utils.GetDeviceScale());
-        banner.OnBannerAdLoaded += () => OnMain(() => SetBannerHeight(banner.GetHeightInPixels()));
+        banner.OnBannerAdLoaded += () => OnMain(() =>
+        {
+            SetBannerHeight(banner.GetHeightInPixels());
+#if UNITY_EDITOR
+            KeepEditorBannerOnTop();
+#endif
+        });
         banner.OnBannerAdLoadFailed += error => OnMain(() =>
         {
             Debug.LogWarning("[Ads] 배너 광고 로드 실패: " + error);
@@ -241,6 +247,30 @@ public class Ads : MonoBehaviour
         });
         banner.LoadAd(new AdRequest());
     }
+
+#if UNITY_EDITOR
+    // 기기에서는 배너가 게임 화면 위의 별도 창이라 게임 UI(팝업의 어두운 막 등)가 가릴 수 없다.
+    // 에디터의 가짜 배너는 플러그인이 띄우는 UI 캔버스(정렬 순서 0)라 게임 팝업 층(40)·효과 층(50)이 덮을 수 있어서,
+    // 기기와 똑같이 보이도록 맨 위로 올린다.
+    float lastBannerCheck;
+
+    void Update()
+    {
+        if (banner == null || Time.unscaledTime - lastBannerCheck < 1f) return;
+        lastBannerCheck = Time.unscaledTime;
+        KeepEditorBannerOnTop();
+    }
+
+    static void KeepEditorBannerOnTop()
+    {
+        foreach (var canvas in FindObjectsByType<Canvas>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        {
+            if (!canvas.isRootCanvas || canvas.transform.root.name.IndexOf("BANNER", StringComparison.OrdinalIgnoreCase) < 0) continue;
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = short.MaxValue;
+        }
+    }
+#endif
 
     void OnDestroy()
     {

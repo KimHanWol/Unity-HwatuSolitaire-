@@ -198,6 +198,8 @@ public static class Art
     public static Sprite Circle128 => Paint("circle", 256, p => Circle(p, Vector2.zero, 0.98f));
 
     public static Sprite Ring => Paint("ring", 256, p => Mathf.Abs(Circle(p, Vector2.zero, 0.88f)) - 0.1f);
+    /// <summary>가는 고리 (쌌다 남은 시간 표시).</summary>
+    public static Sprite RingThin => Paint("ringthin", 256, p => Mathf.Abs(Circle(p, Vector2.zero, 0.9f)) - 0.055f);
 
     /// <summary>가운데가 밝고 가장자리로 갈수록 사라지는 빛.</summary>
     public static Sprite Glow => Paint("glow", 128, p => -1f, 0, (p, d) =>

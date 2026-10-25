@@ -43,7 +43,10 @@ public class GameScreen : MonoBehaviour, IBackHandler
         public int month;
         public float left;
         public CardView a, b;
-        public Image ring;
+        public Image ring;      // 줄어드는 금빛 고리 (track·glow·head 와 함께 한 묶음)
+        public RectTransform ringRoot, ringHead;
+        public Image ringGlow, ringHeadImg;
+        public float ringBorn;
     }
     Pending pending;
     int lastTickSecond = -1;
@@ -366,6 +369,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
     void OnCardPressed(CardView view)
     {
         if (Paused || finished) return;
+        ClearHint();
         int i = view.Index;
         if (views[i] != view) return;
         int month = Board.Month(view.Value);
@@ -386,6 +390,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         {
             Sfx.Blocked();
             view.Wiggle();
+            FlashCovering(i);
             ShowToast(Loc.T("위에 다른 패가 덮고 있어요", "Covered by another card"));
             tutorial?.OnBlockedTap(i);
             return;
@@ -501,13 +506,33 @@ public class GameScreen : MonoBehaviour, IBackHandler
         p.a.Rt.localEulerAngles = new Vector3(0f, 0f, -10f);
         p.a.Rt.localScale = Vector3.one * 0.92f;
         p.b.Rt.localScale = Vector3.one * 0.92f;
-        var ring = Ui.Image(boardRoot, Art.Ring, new Color(1f, 0.8f, 0.25f, 0.95f), "StackRing");
-        Ui.Place(ring.rectTransform, 0.5f, 0.5f, Vector2.one * cellH * 1.25f, p.b.Rt.anchoredPosition);
+        // 은은한 빛 + 옅은 바탕 고리 + 줄어드는 가는 금빛 고리 + 고리 끝의 작은 빛 구슬
+        float size = cellH * 1.3f;
+        var root = Ui.Rect("StackRing", boardRoot);
+        Ui.Place(root, 0.5f, 0.5f, Vector2.one * size, p.b.Rt.anchoredPosition);
+        p.ringRoot = root;
+        p.ringBorn = Time.unscaledTime;
+        p.ringGlow = Ui.Image(root, Art.Glow, new Color(1f, 0.82f, 0.35f, 0.35f), "Glow");
+        Ui.Place(p.ringGlow.rectTransform, 0.5f, 0.5f, Vector2.one * size * 1.35f);
+        var track = Ui.Image(root, Art.RingThin, new Color(1f, 1f, 1f, 0.18f), "Track");
+        Ui.Stretch(track.rectTransform);
+        var ring = Ui.Image(root, Art.RingThin, new Color(1f, 0.85f, 0.35f, 1f), "Fill");
+        Ui.Stretch(ring.rectTransform);
         ring.type = Image.Type.Filled;
         ring.fillMethod = Image.FillMethod.Radial360;
         ring.fillOrigin = (int)Image.Origin360.Top;
         ring.fillClockwise = false;
         p.ring = ring;
+        p.ringHead = Ui.Rect("Head", root);
+        p.ringHead.sizeDelta = Vector2.one * size * 0.13f;
+        p.ringHeadImg = Ui.Image(p.ringHead, Art.Circle128, new Color(1f, 0.95f, 0.75f, 1f), "Dot");
+        Ui.Stretch(p.ringHeadImg.rectTransform);
+        var headGlow = Ui.Image(p.ringHead, Art.Glow, new Color(1f, 0.85f, 0.4f, 0.8f), "DotGlow");
+        Ui.Place(headGlow.rectTransform, 0.5f, 0.5f, Vector2.one * size * 0.4f);
+        headGlow.transform.SetAsFirstSibling();
+        foreach (var g in root.GetComponentsInChildren<Graphic>()) g.raycastTarget = false;
+        root.localScale = Vector3.zero;
+        Anim.Run(root, 0.22f, t => root.localScale = Vector3.one * Anim.OutBack(t));
     }
 
     /// <summary>기다리던 뭉치를 정리한다 (시간이 다 됐거나 다른 짝을 맞췄을 때): 두 장이 그냥 사라진다.</summary>
@@ -516,7 +541,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         if (pending == null) return;
         var p = pending;
         pending = null;
-        if (p.ring != null) Destroy(p.ring.gameObject);
+        if (p.ringRoot != null) Destroy(p.ringRoot.gameObject);
         if (p.a != null) Vanish(p.a, 0.18f);
         if (p.b != null) Vanish(p.b, 0.18f);
     }
@@ -531,7 +556,17 @@ public class GameScreen : MonoBehaviour, IBackHandler
         {
             float k = Mathf.Clamp01(pending.left / def.stackWindow);
             pending.ring.fillAmount = k;
-            pending.ring.color = k < 0.35f ? Color.Lerp(Art.Red, Art.Gold, 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 20f)) : new Color(1f, 0.8f, 0.25f, 0.95f);
+            // 금빛 → 다 줄어 갈수록 따뜻한 주황으로 부드럽게 (깜빡이지 않는다)
+            Color c = Color.Lerp(new Color(1f, 0.5f, 0.25f, 1f), new Color(1f, 0.85f, 0.35f, 1f), Mathf.SmoothStep(0f, 1f, k / 0.5f));
+            pending.ring.color = c;
+            pending.ringHeadImg.color = Color.Lerp(c, Color.white, 0.6f);
+            // 고리 끝(줄어드는 쪽)에 빛 구슬: 위에서 시작해 시계 반대 방향으로 채워져 있으므로 끝은 위에서 시계 반대로 k 바퀴
+            float r = pending.ringRoot.sizeDelta.x * 0.45f, ang = Mathf.PI * 0.5f + k * Mathf.PI * 2f;
+            pending.ringHead.anchoredPosition = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * r;
+            // 얼마 안 남으면 살짝 숨 쉬듯
+            float breathe = k < 0.35f ? 0.04f * Mathf.Sin(Time.unscaledTime * 9f) : 0f;
+            if (Time.unscaledTime - pending.ringBorn > 0.25f) pending.ringRoot.localScale = Vector3.one * (1f + breathe);
+            pending.ringGlow.color = new Color(c.r, c.g, c.b, 0.25f + 0.15f * k);
             // 포개진 패가 들썩여서 "한 장 더 얹을 수 있다"는 느낌을 준다.
             if (pending.b != null) pending.b.Rt.localScale = Vector3.one * (0.92f + 0.03f * Mathf.Sin(Time.unscaledTime * 14f));
         }
@@ -544,7 +579,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         var p = pending;
         pending = null;
         if (selected != null) { selected.Selected = false; selected = null; }
-        if (p.ring != null) Destroy(p.ring.gameObject);
+        if (p.ringRoot != null) Destroy(p.ringRoot.gameObject);
 
         views[third.Index] = null;
         board[third.Index] = Board.Empty;
@@ -718,6 +753,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
 
     void ShuffleBoard()
     {
+        ClearHint();
         if (selected != null) { selected.Selected = false; selected = null; }
         ShowToast(Loc.T("짝이 없어서 패를 섞어요!", "No pairs left - shuffling!"));
         var move = Rules.Shuffle(board, rng);
@@ -911,7 +947,61 @@ public class GameScreen : MonoBehaviour, IBackHandler
             if (elapsed >= Limit) TimeUp();
         }
         if (!Paused && !finished) UpdatePending(Mathf.Min(Time.unscaledDeltaTime, 0.1f));
+        UpdateIdleHint();
         RefreshTimer();
+    }
+
+    // ------------------------------------------------------------ 추천 (한동안 못 고르면 둘 수 있는 짝이 은은하게 깜빡인다)
+    const float HintAfter = 8f;
+    float idle;
+    readonly List<CardView> hinted = new List<CardView>();
+
+    void UpdateIdleHint()
+    {
+        // 튜토리얼은 손가락이 짚어 주므로 쓰지 않는다. 쌌다를 기다리는 중이거나 패를 하나 골라 둔 동안도 기다린다.
+        if (Paused || finished || finale || tutorial != null || pending != null || selected != null) { idle = 0f; return; }
+        if (hinted.Count > 0) return;
+        idle += Time.unscaledDeltaTime;
+        if (idle < HintAfter) return;
+        idle = 0f;
+        var moves = Rules.FindMoves(board, BombMask());
+        if (moves.Count > 0)
+        {
+            // 높은 층의 짝을 먼저 (맨 위가 눈에 잘 띄고, 치우면 아래가 열린다)
+            var tiles = board.Layout.Tiles;
+            var m = moves[0];
+            foreach (var x in moves)
+                if (tiles[x.A].Z + tiles[x.B].Z > tiles[m.A].Z + tiles[m.B].Z) m = x;
+            AddHint(m.A);
+            AddHint(m.B);
+            return;
+        }
+        // 짝이 없으면 쓸 수 있는 폭탄 달의 열린 패 하나
+        foreach (int mo in bombs)
+            foreach (int t in board.TilesOfMonth(mo))
+                if (board.Free(t)) { AddHint(t); return; }
+    }
+
+    void AddHint(int tile)
+    {
+        var v = views[tile];
+        if (v == null) return;
+        v.Hint = true;
+        hinted.Add(v);
+    }
+
+    void ClearHint()
+    {
+        idle = 0f;
+        foreach (var v in hinted) if (v != null) v.Hint = false;
+        hinted.Clear();
+    }
+
+    /// <summary>덮인 패를 눌렀을 때 그 위를 덮고 있는 패들을 잠깐 빛내고 들썩여 "이 패부터 치워야 한다"를 보여 준다.</summary>
+    void FlashCovering(int tile)
+    {
+        foreach (int up in board.Layout.Above[tile])
+            if (board[up] != Board.Empty && views[up] != null) views[up].FlashCover();
     }
 
     void RefreshTimer()

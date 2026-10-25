@@ -53,7 +53,8 @@ public class TutorialDirector : MonoBehaviour
             0, 6, 0,  2, 6, 0,  4, 6, 0,  6, 6, 0,
         };
         var cells = new int[20];
-        cells[P1] = MonthP * 4 + 0; cells[P2] = MonthP * 4 + 3;
+        // 첫 짝은 거의 똑같이 생긴 벚꽃 피 두 장 ("같은 그림"이 바로 보이게)
+        cells[P1] = MonthP * 4 + 2; cells[P2] = MonthP * 4 + 3;
         cells[X1] = MonthX * 4 + 0; cells[X2] = MonthX * 4 + 2;
         cells[A1] = MonthA * 4 + 0; cells[A2] = MonthA * 4 + 2; cells[A3] = MonthA * 4 + 3; cells[A4] = MonthA * 4 + 1;
         cells[B1] = MonthB * 4 + 0; cells[B2] = MonthB * 4 + 1; cells[B3] = MonthB * 4 + 2; cells[B4] = MonthB * 4 + 3;
@@ -206,39 +207,39 @@ public class TutorialDirector : MonoBehaviour
         {
             // ① 짝
             case 0:
-                Say(Loc.T("화투 사천성에 온 걸 환영해요!\n같은 달(같은 꽃) 패 두 장을 차례로 누르면 <color=#C8102E>짝!</color> 하고 없어져요.",
-                          "Welcome! Tap two cards of the same month\n(same flower) to <color=#C8102E>snap</color> them away."));
+                Say(Loc.T("화투 사천성에 온 걸 환영해요!\n<color=#C8102E>같은 그림</color> 패 두 장을 차례로 누르면 <color=#C8102E>짝!</color> 하고 없어져요.",
+                          "Welcome! Tap two cards with the\n<color=#C8102E>same picture</color> to <color=#C8102E>snap</color> them away."));
                 Point(P1);
                 break;
             case 1:
-                Say(Loc.T("좋아요! 같은 3월 벚꽃 패를 하나 더 눌러요.", "Good! Now tap the other March card."));
+                Say(Loc.T("좋아요! 똑같은 벚꽃 패를 하나 더 눌러요.", "Good! Now tap the matching cherry card."));
                 Point(P2);
                 break;
             // ② 덮인 패
             case 2:
-                Say(Loc.T("벚꽃을 치우니 그 아래 패가 밝아졌죠? 패는 층층이 쌓여 있어요.\n아직 <color=#C8102E>어둡게 보이는 패</color>는 위에 다른 패가 덮고 있어요. 눌러 볼까요?",
-                          "Clearing the cherry cards lit up the cards below.\n<color=#C8102E>Darker cards</color> are still covered. Try tapping one."));
+                Say(Loc.T("패는 층층이 쌓여 있어요. 벚꽃을 치우니 아래 패가 밝아졌죠?\n<color=#C8102E>어두운 패</color>는 위에 다른 패가 올라가 있어요. 한번 눌러 볼까요?",
+                          "Cards are stacked in layers. The cards below lit up!\n<color=#C8102E>Dark cards</color> have another card on top. Try tapping one."));
                 Point(C2);
                 break;
             // ③ 쌌다
             case 3:
-                Say(Loc.T("덮인 패는 <color=#C8102E>눌리지 않아요</color>. 위 패부터 치워야 해요.\n이번엔 <color=#C8102E>쌌다!</color>를 해 볼게요. 1월 송학 두 장으로 먼저 짝!",
-                          "Covered cards <color=#C8102E>can't be picked</color>.\nNow let's make a <color=#C8102E>Ppeok</color>! First, snap two January cards."));
+                Say(Loc.T("방금 <color=#C8102E>반짝인 패</color>가 위에 올라가 있어서 아래 패는 못 골라요.\n위 패부터 치워요. 이번엔 <color=#C8102E>쌌다!</color> 소나무 패 두 장으로 먼저 짝!",
+                          "The <color=#C8102E>card that flashed</color> is on top, so the one below is locked.\nNow a <color=#C8102E>Ppeok</color>! First, snap two pine cards."));
                 Point(A1);
                 break;
             case 4:
-                Say(Loc.T("같은 1월 패를 하나 더!", "One more January card!"));
+                Say(Loc.T("그림이 조금 달라도 <color=#C8102E>같은 꽃</color>이면 짝이에요.\n소나무 패를 하나 더!", "Pictures can differ: the <color=#C8102E>same flower</color> is a match.\nOne more pine card!"));
                 Point(A2);
                 break;
             case 5:
-                Say(Loc.T("짝 맞춘 두 장이 잠깐 포개져 있어요.\n금빛 고리가 줄기 전에 <color=#C8102E>같은 달 패를 하나 더</color> 누르면…",
-                          "The pair stays stacked for a moment.\nTap <color=#C8102E>one more of that month</color> before the ring runs out..."));
+                Say(Loc.T("짝 맞춘 두 장이 잠깐 포개져 있어요.\n금빛 고리가 줄기 전에 <color=#C8102E>같은 꽃 패를 하나 더</color> 누르면…",
+                          "The pair stays stacked for a moment.\nTap <color=#C8102E>one more of that flower</color> before the ring runs out..."));
                 Point(A3);
                 break;
             // ④ 폭탄 쓰기
             case 6:
-                Say(Loc.T("<color=#C8102E>쌌다!</color> 세 장이 뭉쳐 <color=#C8102E>뻑 폭탄</color>이 됐어요.\n폭탄 달(1월)의 남은 패를 누르면 둘레 패까지 펑! 눌러 볼까요?",
-                          "<color=#C8102E>Stacked!</color> That's a <color=#C8102E>Ppeok bomb</color>.\nTap the last January card to blast it and nearby pairs!"));
+                Say(Loc.T("<color=#C8102E>쌌다!</color> 세 장이 뭉쳐 <color=#C8102E>뻑 폭탄</color>이 됐어요.\n남은 소나무 패를 누르면 둘레 패까지 펑! 눌러 볼까요?",
+                          "<color=#C8102E>Stacked!</color> That's a <color=#C8102E>Ppeok bomb</color>.\nTap the last pine card to blast it and nearby pairs!"));
                 Point(A4);
                 break;
             case 7:
@@ -247,7 +248,7 @@ public class TutorialDirector : MonoBehaviour
                 break;
             // ⑤ 쌌다 세 번 → 싹쓸이
             case 8:
-                Say(Loc.T("이번엔 폭탄을 모아 볼게요.\n8월 공산으로 짝 → 셋째 패.", "Now let's collect bombs.\nAugust: pair, then the third card."));
+                Say(Loc.T("이번엔 폭탄을 모아 볼게요.\n억새(공산) 패로 짝 → 셋째 패.", "Now let's collect bombs.\nPampas cards: pair, then the third card."));
                 Point(B1);
                 break;
             case 9:
@@ -259,7 +260,7 @@ public class TutorialDirector : MonoBehaviour
                 Point(B3);
                 break;
             case 11:
-                Say(Loc.T("12월 비로 한 번 더.", "Again with December."));
+                Say(Loc.T("비 패로 한 번 더.", "Again with the rain cards."));
                 Point(C1);
                 break;
             case 12:
@@ -271,7 +272,7 @@ public class TutorialDirector : MonoBehaviour
                 Point(C3);
                 break;
             case 14:
-                Say(Loc.T("마지막! 9월 국진으로 한 번 더.", "Last one! September this time."));
+                Say(Loc.T("마지막! 국화 패로 한 번 더.", "Last one! Chrysanthemum cards."));
                 Point(D1);
                 break;
             case 15:

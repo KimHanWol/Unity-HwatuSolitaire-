@@ -121,7 +121,19 @@ public class TitleScreen : MonoBehaviour, IBackHandler
         if (badge != null && badge.localScale.x > 0.99f) badge.localEulerAngles = new Vector3(0f, 0f, 12f + Mathf.Sin(time * 2.2f) * 4f);
     }
 
-    public void OnBack() => Application.Quit();
+    /// <summary>타이틀에서 뒤로 가기: 바로 끄지 않고 "게임을 끝낼까요?"를 한 번 묻는다 (팝업에서 한 번 더 누르면 닫힌다).</summary>
+    public void OnBack()
+    {
+        var p = Popup.Open(new Vector2(820f, 600f), Loc.T("게임 종료", "Quit"));
+        p.Label(Loc.T("게임을 끝낼까요?", "Quit the game?"), 48, Art.Ink, 230f, 120f);
+        float half = 330f;
+        p.Button(Loc.T("나가기", "Quit"), null, Art.Red, Art.RedDark, 420f, () =>
+        {
+            PlayerPrefs.Save();
+            Application.Quit();
+        }, half, -(half + 30f) / 2f, 130f);
+        p.Button(Loc.T("취소", "Cancel"), null, Art.Green, Art.GreenDark, 420f, () => p.Close(), half, (half + 30f) / 2f, 130f);
+    }
 }
 
 /// <summary>글자에 위→아래 그라데이션 (금박 제목).</summary>

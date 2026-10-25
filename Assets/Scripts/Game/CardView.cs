@@ -88,9 +88,10 @@ public class CardView : MonoBehaviour, IPointerDownHandler
     }
 
     bool blocked;
-    static readonly Color BlockedTint = new Color(0.74f, 0.72f, 0.68f);
+    // 덮인 패는 한눈에 "못 고른다"는 걸 알 수 있게 꽤 어둡게 (그림은 알아볼 수 있을 만큼)
+    static readonly Color BlockedTint = new Color(0.5f, 0.48f, 0.46f);
 
-    /// <summary>막힌 패(지금 짝으로 고를 수 없는 패)는 살짝 어둡게. 열리면 밝아진다.</summary>
+    /// <summary>막힌 패(지금 짝으로 고를 수 없는 패)는 어둡게. 열리면 밝아진다.</summary>
     public void SetBlocked(bool value, bool instant = false)
     {
         if (blocked == value && !instant) return;
@@ -99,6 +100,28 @@ public class CardView : MonoBehaviour, IPointerDownHandler
         if (instant) { face.color = to; return; }
         Color from = face.color;
         Anim.Run(face, 0.25f, t => face.color = Color.Lerp(from, to, t));
+    }
+
+    bool hint;
+    float hintTime, coverFlash;
+
+    /// <summary>한동안 못 고르고 있을 때 둘 수 있는 짝을 알려 준다: 요란하지 않게 은은한 빛이 천천히 깜빡인다.</summary>
+    public bool Hint
+    {
+        get => hint;
+        set { if (hint != value) { hint = value; hintTime = 0f; } }
+    }
+
+    /// <summary>덮인 패를 눌렀을 때 그 위를 덮고 있는 패: 잠깐 빛나며 살짝 들썩여 "이 패가 위에 있다"를 보여 준다.</summary>
+    public void FlashCover()
+    {
+        coverFlash = 1f;
+        Anim.Run(lift, 0.45f, t =>
+        {
+            float k = Mathf.Sin(t * Mathf.PI);
+            lift.anchoredPosition = new Vector2(0f, Rt.sizeDelta.y * 0.07f * k);
+            lift.localScale = Vector3.one * (1f + 0.06f * k);
+        });
     }
 
     public void RefreshMonthBadge()
@@ -164,7 +187,16 @@ public class CardView : MonoBehaviour, IPointerDownHandler
     {
         pulse += Time.unscaledDeltaTime;
         float wave = 0.5f + 0.5f * Mathf.Sin(pulse * 6f);
-        glow.color = new Color(1f, 0.85f, 0.3f, Mathf.MoveTowards(glow.color.a, selected ? 0.75f + 0.25f * wave : 0f, Time.unscaledDeltaTime * 6f));
+        // 추천: 1.6초 주기로 천천히 밝아졌다 어두워진다 (최대 0.45)
+        float hintA = 0f;
+        if (hint)
+        {
+            hintTime += Time.unscaledDeltaTime;
+            hintA = 0.45f * (0.5f - 0.5f * Mathf.Cos(hintTime * Mathf.PI * 2f / 1.6f));
+        }
+        coverFlash = Mathf.MoveTowards(coverFlash, 0f, Time.unscaledDeltaTime * 1.4f);
+        float target = selected ? 0.75f + 0.25f * wave : Mathf.Max(hintA, coverFlash * 0.8f);
+        glow.color = new Color(1f, 0.85f, 0.3f, Mathf.MoveTowards(glow.color.a, target, Time.unscaledDeltaTime * 6f));
         bombGlow.color = new Color(1f, 0.35f, 0.1f, bomb ? 0.35f + 0.35f * wave : 0f);
         if (bomb) bombIcon.rectTransform.localEulerAngles = new Vector3(0f, 0f, Mathf.Sin(pulse * 9f) * 10f);
     }

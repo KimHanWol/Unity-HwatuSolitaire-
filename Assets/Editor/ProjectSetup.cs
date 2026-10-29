@@ -20,8 +20,8 @@ public static class ProjectSetup
     // 스토어에 올린 뒤에는 바꿀 수 없다.
     const string PackageName = "com.kimhanwol.hwatusolitaire";
     // 스토어에 새 빌드를 올릴 때마다 VersionCode를 1씩 올린다.
-    const string Version = "1.0.0";
-    const int VersionCode = 3;
+    const string Version = "1.0.1";
+    const int VersionCode = 4;
     const string IconPath = "Assets/Icon/AppIcon.png";
 
     [InitializeOnLoadMethod]

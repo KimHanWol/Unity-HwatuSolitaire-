@@ -21,6 +21,7 @@ public class StageSelectScreen : MonoBehaviour, IBackHandler
     public void Build(int focus)
     {
         var rt = (RectTransform)transform;
+        AppPrompts.MaybeAskReview(this);
 
         var top = Ui.Rect("Top", rt);
         top.anchorMin = new Vector2(0f, 1f);

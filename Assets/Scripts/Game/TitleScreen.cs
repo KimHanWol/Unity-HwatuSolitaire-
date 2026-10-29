@@ -11,7 +11,11 @@ public class TitleScreen : MonoBehaviour, IBackHandler
     RectTransform badge;
     float time;
 
-    void Start() => Build();
+    void Start()
+    {
+        Build();
+        AppPrompts.CheckUpdate(this);
+    }
 
     void Build()
     {

@@ -13,6 +13,8 @@ public class DevAutoShot : MonoBehaviour
 {
     string dir;
     int index;
+    /// <summary>자동 스크린샷 중 (창 포커스를 잃어도 일시정지 창을 띄우지 않는다).</summary>
+    public static bool Active { get; private set; }
     bool english;
 
     public static void StartIfRequested(App app)
@@ -26,6 +28,7 @@ public class DevAutoShot : MonoBehaviour
         bool english = System.Array.IndexOf(args, "-autoshot-en") >= 0;
         Loc.Set(!english);
         Sfx.RefreshMusic();
+        Active = true;
         var shot = app.gameObject.AddComponent<DevAutoShot>();
         shot.dir = args[i + 1];
         shot.english = english;

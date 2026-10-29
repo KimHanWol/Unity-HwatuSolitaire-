@@ -1210,6 +1210,15 @@ public class GameScreen : MonoBehaviour, IBackHandler
         if (paused && !Ads.Showing) OpenPause();
     }
 
+    /// <summary>포커스를 잃어도(다른 창으로 전환, 알림창을 내림 등) 일시정지 창을 띄워 둔다. 돌아오면 "계속하기"로 이어 한다.</summary>
+    void OnApplicationFocus(bool focus)
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (DevAutoShot.Active) return;
+#endif
+        if (!focus && !Ads.Showing) OpenPause();
+    }
+
     /// <summary>판을 하던 중에 다시 하거나 나가면 지금까지 한 것이 없어진다는 걸 한 번 묻는다.</summary>
     void ConfirmLeave(string title, string yes, System.Action leave)
     {

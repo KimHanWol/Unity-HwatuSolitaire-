@@ -65,6 +65,15 @@ public static class Progress
         return newBest;
     }
 
+    /// <summary>깬 스테이지 수.</summary>
+    public static int ClearedCount()
+    {
+        Load();
+        int n = 0;
+        foreach (char c in stars) if (c > '0') n++;
+        return n;
+    }
+
     public static int TotalStars
     {
         get

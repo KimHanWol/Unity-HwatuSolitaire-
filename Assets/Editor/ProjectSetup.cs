@@ -21,7 +21,7 @@ public static class ProjectSetup
     const string PackageName = "com.kimhanwol.hwatusolitaire";
     // 스토어에 새 빌드를 올릴 때마다 VersionCode를 1씩 올린다.
     const string Version = "1.0.0";
-    const int VersionCode = 2;
+    const int VersionCode = 3;
     const string IconPath = "Assets/Icon/AppIcon.png";
 
     [InitializeOnLoadMethod]
@@ -51,6 +51,8 @@ public static class ProjectSetup
         PlayerSettings.bundleVersion = Version;
         PlayerSettings.Android.bundleVersionCode = VersionCode;
         PlayerSettings.SplashScreen.showUnityLogo = false;
+        // 안드로이드 13+ 예측 뒤로 가기(OnBackInvokedCallback)를 켜 두면 뒤로 가기가 게임에 오기 전에 앱이 닫힌다 → 끄고 게임이 직접 처리 (나가기 창)
+        PlayerSettings.Android.predictiveBackSupport = false;
         // PC 확인용 창 크기 (세로 화면)
         PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
         PlayerSettings.defaultScreenWidth = 540;

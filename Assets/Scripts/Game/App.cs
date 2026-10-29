@@ -45,6 +45,9 @@ public class App : MonoBehaviour
         Application.targetFrameRate = 60;
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
         Input.multiTouchEnabled = false;
+        // 뒤로 가기는 화면마다 직접 처리한다 (타이틀: 나가기 창, 게임: 일시정지 창)
+        Input.backButtonLeavesApp = false;
+        AppPrompts.CountLaunch();
 
         LoadStages();
         EnsureCamera();

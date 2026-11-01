@@ -1,5 +1,20 @@
 # 패치 노트 (Play 콘솔 "이 버전의 새로운 기능", 짧게, 언어마다 500자 이하)
 
+## 1.0.2 (버전 코드 5)
+
+```
+<ko-KR>
+유럽 이용자를 위한 광고 동의 안내를 적용했어요.
+앱을 더 안정적으로 즐길 수 있게 다듬었어요.
+</ko-KR>
+<en-US>
+Added the ad consent notice for users in Europe.
+General stability improvements.
+</en-US>
+```
+
+심사가 끝나 스토어에 1.0.2 가 나오면 `docs/app.json` 의 `latestVersion` 을 "1.0.2" 로 올려 푸시한다.
+
 ## 1.0.1 (버전 코드 4)
 
 ```

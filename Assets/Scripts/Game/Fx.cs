@@ -130,7 +130,7 @@ public class Fx : MonoBehaviour
     public static void Ring(Vector3 world, Color color, float maxSize, float duration)
     {
         if (instance == null) return;
-        var img = Ui.Image(instance.layer, Art.Ring, color, "Ring");
+        var img = Ui.Image(instance.layer, Art.RingWave, color, "Ring");
         img.rectTransform.anchoredPosition = Local(world);
         Anim.Run(img, duration, t =>
         {

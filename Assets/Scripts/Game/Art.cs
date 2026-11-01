@@ -199,7 +199,20 @@ public static class Art
 
     public static Sprite Ring => Paint("ring", 256, p => Mathf.Abs(Circle(p, Vector2.zero, 0.88f)) - 0.1f);
     /// <summary>가는 고리 (쌌다 남은 시간 표시).</summary>
-    public static Sprite RingThin => Paint("ringthin", 256, p => Mathf.Abs(Circle(p, Vector2.zero, 0.9f)) - 0.055f);
+    public static Sprite RingThin => Paint("ringthin", 384, p => Mathf.Abs(Circle(p, Vector2.zero, 0.9f)) - RingHalfWidth);
+    /// <summary>충격파: 바깥 가장자리는 또렷하고 안쪽으로 부드럽게 사라진다. 크게 퍼져도 굵은 띠처럼 보이지 않는다.</summary>
+    public static Sprite RingWave => Paint("ringwave", 384, p => Circle(p, Vector2.zero, 0.98f), 0, (p, d) =>
+    {
+        float t = Mathf.Clamp01(p.magnitude / 0.98f);
+        return new Color(1f, 1f, 1f, Mathf.Pow(t, 14f));
+    });
+    /// <summary>고리 둘레만 은은하게 빛난다. 가운데가 비어 있어 패를 뿌옇게 덮지 않는다 (고리 지름의 1.35배로 깐다).</summary>
+    public static Sprite RingHalo => Paint("ringhalo", 256, p => -1f, 0, (p, d) =>
+    {
+        float r = p.magnitude, x = (r - 0.667f) / 0.2f;
+        return new Color(1f, 1f, 1f, Mathf.Exp(-x * x) * Mathf.Clamp01((1f - r) / 0.15f));
+    });
+    public const float RingHalfWidth = 0.055f;
 
     /// <summary>가운데가 밝고 가장자리로 갈수록 사라지는 빛.</summary>
     public static Sprite Glow => Paint("glow", 128, p => -1f, 0, (p, d) =>

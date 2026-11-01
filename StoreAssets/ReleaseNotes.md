@@ -1,5 +1,22 @@
 # 패치 노트 (Play 콘솔 "이 버전의 새로운 기능", 짧게, 언어마다 500자 이하)
 
+## 1.0.3 (버전 코드 6)
+
+```
+<ko-KR>
+처음 하는 분도 더 쉽게 즐길 수 있어요!
+- 튜토리얼 안내를 한 번에 하나씩, 쉬운 말로 바꿨어요
+- 쌌다와 폭탄 효과를 깔끔하게 다듬었어요
+</ko-KR>
+<en-US>
+Easier to pick up for new players!
+- Tutorial tips now come one at a time, in simpler words
+- Cleaner stack and bomb effects
+</en-US>
+```
+
+심사가 끝나 스토어에 1.0.3 이 나오면 `docs/app.json` 의 `latestVersion` 을 "1.0.3" 으로 올려 푸시한다.
+
 ## 1.0.2 (버전 코드 5)
 
 ```

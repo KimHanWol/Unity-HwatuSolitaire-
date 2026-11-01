@@ -45,7 +45,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
         public CardView a, b;
         public Image ring;      // 줄어드는 금빛 고리 (track·glow·head 와 함께 한 묶음)
         public RectTransform ringRoot, ringHead;
-        public Image ringGlow, ringHeadImg;
+        public Image ringGlow, ringHeadImg, ringCap;
         public float ringBorn;
     }
     Pending pending;
@@ -506,13 +506,13 @@ public class GameScreen : MonoBehaviour, IBackHandler
         p.a.Rt.localEulerAngles = new Vector3(0f, 0f, -10f);
         p.a.Rt.localScale = Vector3.one * 0.92f;
         p.b.Rt.localScale = Vector3.one * 0.92f;
-        // 은은한 빛 + 옅은 바탕 고리 + 줄어드는 가는 금빛 고리 + 고리 끝의 작은 빛 구슬
+        // 둘레의 은은한 빛 + 옅은 바탕 고리 + 줄어드는 금빛 고리 + 양 끝(둥근 시작점, 작은 빛 구슬)
         float size = cellH * 1.3f;
         var root = Ui.Rect("StackRing", boardRoot);
         Ui.Place(root, 0.5f, 0.5f, Vector2.one * size, p.b.Rt.anchoredPosition);
         p.ringRoot = root;
         p.ringBorn = Time.unscaledTime;
-        p.ringGlow = Ui.Image(root, Art.Glow, new Color(1f, 0.82f, 0.35f, 0.35f), "Glow");
+        p.ringGlow = Ui.Image(root, Art.RingHalo, new Color(1f, 0.82f, 0.35f, 0.55f), "Glow");
         Ui.Place(p.ringGlow.rectTransform, 0.5f, 0.5f, Vector2.one * size * 1.35f);
         var track = Ui.Image(root, Art.RingThin, new Color(1f, 1f, 1f, 0.18f), "Track");
         Ui.Stretch(track.rectTransform);
@@ -523,6 +523,9 @@ public class GameScreen : MonoBehaviour, IBackHandler
         ring.fillOrigin = (int)Image.Origin360.Top;
         ring.fillClockwise = false;
         p.ring = ring;
+        // 고리 시작점이 칼로 자른 듯 보이지 않게 둥근 끝을 얹는다.
+        p.ringCap = Ui.Image(root, Art.Circle128, ring.color, "Cap");
+        Ui.Place(p.ringCap.rectTransform, 0.5f, 0.5f, Vector2.one * size * Art.RingHalfWidth, new Vector2(0f, size * 0.45f));
         p.ringHead = Ui.Rect("Head", root);
         p.ringHead.sizeDelta = Vector2.one * size * 0.13f;
         p.ringHeadImg = Ui.Image(p.ringHead, Art.Circle128, new Color(1f, 0.95f, 0.75f, 1f), "Dot");
@@ -559,6 +562,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
             // 금빛 → 다 줄어 갈수록 따뜻한 주황으로 부드럽게 (깜빡이지 않는다)
             Color c = Color.Lerp(new Color(1f, 0.5f, 0.25f, 1f), new Color(1f, 0.85f, 0.35f, 1f), Mathf.SmoothStep(0f, 1f, k / 0.5f));
             pending.ring.color = c;
+            pending.ringCap.color = c;
             pending.ringHeadImg.color = Color.Lerp(c, Color.white, 0.6f);
             // 고리 끝(줄어드는 쪽)에 빛 구슬: 위에서 시작해 시계 반대 방향으로 채워져 있으므로 끝은 위에서 시계 반대로 k 바퀴
             float r = pending.ringRoot.sizeDelta.x * 0.45f, ang = Mathf.PI * 0.5f + k * Mathf.PI * 2f;
@@ -566,7 +570,7 @@ public class GameScreen : MonoBehaviour, IBackHandler
             // 얼마 안 남으면 살짝 숨 쉬듯
             float breathe = k < 0.35f ? 0.04f * Mathf.Sin(Time.unscaledTime * 9f) : 0f;
             if (Time.unscaledTime - pending.ringBorn > 0.25f) pending.ringRoot.localScale = Vector3.one * (1f + breathe);
-            pending.ringGlow.color = new Color(c.r, c.g, c.b, 0.25f + 0.15f * k);
+            pending.ringGlow.color = new Color(c.r, c.g, c.b, 0.35f + 0.2f * k);
             // 포개진 패가 들썩여서 "한 장 더 얹을 수 있다"는 느낌을 준다.
             if (pending.b != null) pending.b.Rt.localScale = Vector3.one * (0.92f + 0.03f * Mathf.Sin(Time.unscaledTime * 14f));
         }

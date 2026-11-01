@@ -30,7 +30,7 @@ public static class Tips
     {
         var p = Popup.Open(new Vector2(920f, 1320f), Loc.T("이렇게 해요", "How to play"), true);
         Pair(p, 0, 3, "=", 300f);
-        p.Label(Loc.T("같은 달(같은 꽃) 화투끼리 짝이에요", "Cards of the same month (flower) make a pair"), 46, Art.Ink, 470f, 80f);
+        p.Label(Loc.T("같은 종류의 패끼리 짝이에요", "Cards of the same kind make a pair"), 46, Art.Ink, 470f, 80f);
         p.Label(Loc.T(
             "패가 층층이 쌓여 있어요.\n<color=#C8102E>위에 덮인 패가 없는 패</color>만 고를 수 있어요.\n덮인 패는 조금 어둡게 보여요.\n위 패를 치우면 아래 패가 열려요.",
             "Cards are stacked in layers.\nOnly cards with <color=#C8102E>nothing on top</color> can be picked.\nCovered cards look a little darker.\nClear the top ones to open the cards below."),
@@ -46,8 +46,8 @@ public static class Tips
         var bomb = Ui.Image(p.Panel, Art.IconBomb, Color.white, "Bomb");
         Ui.Place(bomb.rectTransform, 0.5f, 1f, new Vector2(200f, 200f), new Vector2(0f, -240f));
         p.Label(Loc.T(
-            "짝을 맞추면 두 장이 잠깐 <color=#C8102E>포개져</color> 있어요.\n(둘레의 금빛 고리가 줄어드는 동안)\n\n그 사이에 <color=#C8102E>같은 달 패를 하나 더</color> 누르면\n세 장이 뭉쳐 \"쌌다!\" — <color=#C8102E>뻑</color> 폭탄이 돼요. (최대 3개)\n\n폭탄 달의 빛나는 패를 하나 누르면 그 패와\n둘레의 짝 여러 쌍이 한꺼번에 <color=#C8102E>펑!</color> 터져요.\n\n폭탄 달 패만 남으면 저절로 펑! 펑!\n뻑 폭탄 셋으로 판을 비우면 <color=#C8102E>싹쓸이</color> → 황금 광!",
-            "After a pair, the two cards <color=#C8102E>stay stacked</color> briefly\n(while the gold ring runs down).\n\nTap <color=#C8102E>one more card of that month</color> in time and\nthe three clump up - a <color=#C8102E>Ppeok</color> bomb (max 3).\n\nTap a glowing card of a bomb month: it and\nseveral nearby pairs go <color=#C8102E>BOOM</color> at once!\n\nIf only bomb cards are left, they blow up on their own.\nClear the board with three bombs for a <color=#C8102E>Sweep</color> - Golden Gwang!"),
+            "짝을 맞추면 두 장이 잠깐 <color=#C8102E>포개져</color> 있어요.\n(주변의 금빛 고리가 줄어드는 동안)\n\n그 사이에 <color=#C8102E>같은 종류 패를 하나 더</color> 누르면\n세 장이 뭉쳐 \"쌌다!\" — <color=#C8102E>뻑</color> 폭탄이 돼요. (최대 3개)\n\n폭탄과 같은 빛나는 패를 하나 누르면 그 패와\n주변 짝 여러 쌍이 한꺼번에 <color=#C8102E>펑!</color> 터져요.\n\n폭탄과 같은 패만 남으면 저절로 펑! 펑!\n뻑 폭탄 셋으로 판을 비우면 <color=#C8102E>싹쓸이</color> → 황금 광!",
+            "After a pair, the two cards <color=#C8102E>stay stacked</color> briefly\n(while the gold ring runs down).\n\nTap <color=#C8102E>one more card of that kind</color> in time and\nthe three clump up - a <color=#C8102E>Ppeok</color> bomb (max 3).\n\nTap a glowing card matching a bomb: it and\nseveral nearby pairs go <color=#C8102E>BOOM</color> at once!\n\nIf only cards matching your bombs are left, they blow up on their own.\nClear the board with three bombs for a <color=#C8102E>Sweep</color> - Golden Gwang!"),
             38, Art.GreyDark, 700f, 640f);
         p.Button(Loc.T("알겠어요!", "Got it!"), Art.IconCheck, Art.Green, Art.GreenDark, 1210f, () => p.Close(), 0f, 0f, 140f);
     }

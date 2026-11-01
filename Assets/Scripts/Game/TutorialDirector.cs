@@ -73,10 +73,11 @@ public class TutorialDirector : MonoBehaviour
 
     // ------------------------------------------------------------ 진행
     GameScreen game;
-    RectTransform panel, pointer, arrow;
+    RectTransform panel, pointer, arrow, ring;
     Text text;
     Button next;
-    Image ring;
+    // 한 번에 한 가지만 말하려고 나눈 안내 ("다음"으로 넘긴다). 18번은 폭탄 마무리 중.
+    const int StepTryDark = 19, StepLocked = 20, StepBombMade = 21, StepSweep = 22;
     int step = -1;
     int expect = -1;          // 지금 누를 수 있는 자리 (-1 이면 없음)
     RectTransform target;     // 손가락이 가리키는 곳
@@ -107,12 +108,23 @@ public class TutorialDirector : MonoBehaviour
 
         pointer = Ui.Rect("Pointer", root);
         pointer.sizeDelta = new Vector2(10f, 10f);
-        ring = Ui.Image(pointer, Art.Ring, Art.Gold, "Ring");
-        Ui.Place(ring.rectTransform, 0.5f, 0.5f, new Vector2(200f, 200f));
-        var arrowImg = Ui.Image(pointer, Art.IconBack, Art.Gold, "Arrow");
-        arrow = arrowImg.rectTransform;
+        // 쌌다 고리와 같은 납작한 금빛 고리 + 둘레의 은은한 빛
+        ring = Ui.Rect("Ring", pointer);
+        Ui.Place(ring, 0.5f, 0.5f, new Vector2(200f, 200f));
+        var halo = Ui.Image(ring, Art.RingHalo, new Color(1f, 0.82f, 0.35f, 0.6f), "Halo");
+        Ui.Stretch(halo.rectTransform);
+        halo.rectTransform.anchorMin = Vector2.one * -0.175f;
+        halo.rectTransform.anchorMax = Vector2.one * 1.175f;
+        var band = Ui.Image(ring, Art.RingThin, Art.Gold, "Band");
+        Ui.Stretch(band.rectTransform);
+        arrow = Ui.Rect("Arrow", pointer);
         Ui.Place(arrow, 0.5f, 0.5f, new Vector2(90f, 90f), new Vector2(0f, 170f));
-        arrow.localEulerAngles = new Vector3(0f, 0f, 90f); // 아래를 가리킨다
+        var arrowShadow = Ui.Image(arrow, Art.IconBack, new Color(0f, 0f, 0f, 0.3f), "Shadow");
+        Ui.Place(arrowShadow.rectTransform, 0.5f, 0.5f, new Vector2(90f, 90f), new Vector2(0f, -6f));
+        var arrowImg = Ui.Image(arrow, Art.IconBack, Art.Gold, "Image");
+        Ui.Stretch(arrowImg.rectTransform);
+        arrowShadow.rectTransform.localEulerAngles = arrowImg.rectTransform.localEulerAngles = new Vector3(0f, 0f, 90f); // 아래를 가리킨다
+        foreach (var g in pointer.GetComponentsInChildren<Graphic>()) g.raycastTarget = false;
         pointer.gameObject.SetActive(false);
     }
 
@@ -140,7 +152,7 @@ public class TutorialDirector : MonoBehaviour
     /// <summary>덮인 패를 눌렀을 때 (직접 눌러 보고 안 눌리는 걸 확인하는 단계).</summary>
     public void OnBlockedTap(int tile)
     {
-        if (step == 2 && tile == C2) Later(1.1f, 3);
+        if (step == StepTryDark && tile == C2) Later(1.1f, StepLocked);
     }
 
     public void OnMatched(int month)
@@ -154,7 +166,7 @@ public class TutorialDirector : MonoBehaviour
 
     public void OnStacked(int month)
     {
-        if (step == 5 && month == MonthA) Later(1.4f, 6);
+        if (step == 5 && month == MonthA) Later(1.4f, StepBombMade);
         else if (step == 10 && month == MonthB) Later(1.4f, 11);
         else if (step == 13 && month == MonthC) Later(1.4f, 14);
         else if (step == 16 && month == MonthD) Later(1.4f, 17);
@@ -174,8 +186,12 @@ public class TutorialDirector : MonoBehaviour
 
     void Next()
     {
-        if (step == 7) Go(8);
-        else if (step == 17)
+        if (step == 2) Go(StepTryDark);
+        else if (step == StepLocked) Go(3);
+        else if (step == StepBombMade) Go(6);
+        else if (step == 7) Go(8);
+        else if (step == 17) Go(StepSweep);
+        else if (step == StepSweep)
         {
             // 설명을 다 읽고 나서 폭탄 마무리
             Hide();
@@ -217,38 +233,48 @@ public class TutorialDirector : MonoBehaviour
                 break;
             // ② 덮인 패
             case 2:
-                Say(Loc.T("패는 층층이 쌓여 있어요. 벚꽃을 치우니 아래 패가 밝아졌죠?\n<color=#C8102E>어두운 패</color>는 위에 다른 패가 올라가 있어요. 한번 눌러 볼까요?",
-                          "Cards are stacked in layers. The cards below lit up!\n<color=#C8102E>Dark cards</color> have another card on top. Try tapping one."));
+                Say(Loc.T("패는 층층이 쌓여 있어요.\n벚꽃을 치우니 아래 패가 밝아졌죠?", "Cards are stacked in layers.\nThe cards below lit up!"));
+                ShowNext(true);
+                break;
+            case StepTryDark:
+                Say(Loc.T("이번엔 <color=#C8102E>어두운 패</color>를 한번 눌러 볼까요?", "Now try tapping a <color=#C8102E>dark card</color>."));
                 Point(C2);
+                break;
+            case StepLocked:
+                Say(Loc.T("패 위에 다른 패가 올라가 있어서\n<color=#C8102E>어둡게 보이는 패</color>는 선택할 수 없어요.",
+                          "A card with another card on top looks dark\nand <color=#C8102E>can't be selected</color>."));
+                ShowNext(true);
                 break;
             // ③ 쌌다
             case 3:
-                Say(Loc.T("방금 <color=#C8102E>반짝인 패</color>가 위에 올라가 있어서 아래 패는 못 골라요.\n위 패부터 치워요. 이번엔 <color=#C8102E>쌌다!</color> 소나무 패 두 장으로 먼저 짝!",
-                          "The <color=#C8102E>card that flashed</color> is on top, so the one below is locked.\nNow a <color=#C8102E>Ppeok</color>! First, snap two pine cards."));
+                Say(Loc.T("다음은 <color=#C8102E>쌌다!</color>\n소나무 패 두 장으로 먼저 짝!", "Next up: <color=#C8102E>Ppeok</color>!\nFirst, snap two pine cards."));
                 Point(A1);
                 break;
             case 4:
-                Say(Loc.T("그림이 조금 달라도 <color=#C8102E>같은 꽃</color>이면 짝이에요.\n소나무 패를 하나 더!", "Pictures can differ: the <color=#C8102E>same flower</color> is a match.\nOne more pine card!"));
+                Say(Loc.T("그림이 조금 달라도 <color=#C8102E>같은 종류</color>면 짝이에요.\n소나무 패를 하나 더!", "Pictures can differ: the <color=#C8102E>same kind</color> is a match.\nOne more pine card!"));
                 Point(A2);
                 break;
             case 5:
-                Say(Loc.T("짝 맞춘 두 장이 잠깐 포개져 있어요.\n금빛 고리가 줄기 전에 <color=#C8102E>같은 꽃 패를 하나 더</color> 누르면…",
-                          "The pair stays stacked for a moment.\nTap <color=#C8102E>one more of that flower</color> before the ring runs out..."));
+                Say(Loc.T("짝 맞춘 두 장이 잠깐 포개져 있어요.\n금빛 고리가 줄기 전에 <color=#C8102E>같은 종류 패를 하나 더</color> 누르면…",
+                          "The pair stays stacked for a moment.\nTap <color=#C8102E>one more of that kind</color> before the ring runs out..."));
                 Point(A3);
                 break;
             // ④ 폭탄 쓰기
+            case StepBombMade:
+                Say(Loc.T("<color=#C8102E>쌌다!</color> 세 장이 뭉쳐\n<color=#C8102E>뻑 폭탄</color>이 됐어요.", "<color=#C8102E>Stacked!</color> That's a\n<color=#C8102E>Ppeok bomb</color>."));
+                ShowNext(true);
+                break;
             case 6:
-                Say(Loc.T("<color=#C8102E>쌌다!</color> 세 장이 뭉쳐 <color=#C8102E>뻑 폭탄</color>이 됐어요.\n남은 소나무 패를 누르면 둘레 패까지 펑! 눌러 볼까요?",
-                          "<color=#C8102E>Stacked!</color> That's a <color=#C8102E>Ppeok bomb</color>.\nTap the last pine card to blast it and nearby pairs!"));
+                Say(Loc.T("남은 소나무 패를 누르면 주변 패까지 펑!\n눌러 볼까요?", "Tap the last pine card to blast it\nand nearby pairs!"));
                 Point(A4);
                 break;
             case 7:
-                Say(Loc.T("펑! 위를 덮던 매조까지 함께 날아가서\n위쪽 패가 모두 열렸어요.", "Boom! The February cards on top went too,\nso every card is open now."));
+                Say(Loc.T("펑! 위를 덮던 패까지 함께 날아가서\n위쪽 패가 모두 열렸어요.", "Boom! The cards on top went too,\nso every card is open now."));
                 ShowNext(true);
                 break;
             // ⑤ 쌌다 세 번 → 싹쓸이
             case 8:
-                Say(Loc.T("이번엔 폭탄을 모아 볼게요.\n억새(공산) 패로 짝 → 셋째 패.", "Now let's collect bombs.\nPampas cards: pair, then the third card."));
+                Say(Loc.T("이번엔 폭탄을 모아 볼게요.\n짝을 맞추고, 같은 패를 한 장 더!", "Now let's collect bombs.\nSnap a pair, then tap one more!"));
                 Point(B1);
                 break;
             case 9:
@@ -284,8 +310,11 @@ public class TutorialDirector : MonoBehaviour
                 Point(D3);
                 break;
             case 17:
-                Say(Loc.T("뻑 폭탄이 셋! 판에 폭탄 달 패만 남으면\n저절로 펑! 펑! 펑! 터져요.\n뻑 폭탄 셋으로 판을 비우면 <color=#C8102E>싹쓸이</color>!",
-                          "Three bombs! When only bomb cards are left,\nthey blow up on their own.\nClear the board with three bombs: <color=#C8102E>Sweep</color>!"));
+                Say(Loc.T("뻑 폭탄이 셋!\n폭탄과 같은 패만 남으면\n저절로 펑! 펑! 펑! 터져요.", "Three bombs!\nWhen only cards matching your bombs are left,\nthey blow up on their own."));
+                ShowNext(true);
+                break;
+            case StepSweep:
+                Say(Loc.T("뻑 폭탄 셋으로 판을 비우면\n<color=#C8102E>싹쓸이</color>!", "Clear the board with three bombs:\n<color=#C8102E>Sweep</color>!"));
                 ShowNext(true);
                 break;
         }
@@ -315,8 +344,8 @@ public class TutorialDirector : MonoBehaviour
         time += Time.unscaledDeltaTime;
         pointer.position = target.position;
         float size = Mathf.Max(target.rect.width, target.rect.height) * 1.15f;
-        ring.rectTransform.sizeDelta = Vector2.one * size * (1f + 0.08f * Mathf.Sin(time * 6f));
-        arrow.anchoredPosition = new Vector2(0f, size * 0.5f + 40f + 14f * Mathf.Sin(time * 6f));
+        ring.sizeDelta = Vector2.one * size * (1f + 0.04f * Mathf.Sin(time * 5f));
+        arrow.anchoredPosition = new Vector2(0f, size * 0.5f + 46f + 10f * Mathf.Sin(time * 5f));
     }
 
     /// <summary>튜토리얼 판을 다 비웠을 때 (싹쓸이): 끝났다고 알리고 1탄으로.</summary>
